@@ -9,6 +9,11 @@ other in order; the app is runnable after every phase.
 
 - One branch per phase (`phase-1-scaffold`, `phase-2-core`, …), one PR per
   phase, merged before the next phase starts.
+- **Authorship:** commits are authored by Claude
+  (`Claude Fable 5 <noreply@anthropic.com>` via `git commit --author`),
+  with the human as committer. PRs are opened with whatever GitHub
+  credential is configured; GitHub shows that account as the PR opener
+  (see the AI-collaboration writeup for attribution).
 - Every change requested **after** this plan is written becomes a new
   numbered phase appended to this file — never folded silently into an
   existing phase.
