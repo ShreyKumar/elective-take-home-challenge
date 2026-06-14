@@ -9,23 +9,28 @@ other in order; the app is runnable after every phase.
 
 - One branch per phase (`phase-1-scaffold`, `phase-2-core`, …), one PR per
   phase, merged before the next phase starts.
-- **Authorship:** commits are authored by Claude
-  (`Claude Fable 5 <noreply@anthropic.com>` via `git commit --author`),
+- **Authorship:** commits are authored by Claude Code
+  (`Claude Code <noreply@anthropic.com>` via `git commit --author`),
   with the human as committer. PRs are opened with whatever GitHub
   credential is configured; GitHub shows that account as the PR opener
   (see the AI-collaboration writeup for attribution).
 - Every change requested **after** this plan is written becomes a new
   numbered phase appended to this file — never folded silently into an
-  existing phase.
+  existing phase. **One documented exception:** the Cypress + CI gate was
+  requested after the original plan and would have been appended as
+  Phase 11, but because it is a prerequisite for the E2E tests that the UI
+  phases write, it has been re-sequenced into its logical execution slot as
+  Phase 4 (this renumbered the old phases 4–10 to 5–11). This is a one-time
+  reorganization, recorded here; the append rule otherwise still holds.
 - Each PR description states: what changed, why (linking the relevant
   requirements section), the decisions made, and how it was verified.
 - **Both test suites evolve with every phase.** Tests are never a separate
   phase or a follow-up PR:
   - **Unit tests (Vitest):** any phase that adds or changes logic ships
     the unit tests for that logic in the same PR.
-  - **E2E tests (Cypress):** from Phase 11 (executed early — see its note)
-    onward, any phase that ships or changes user-facing behavior extends
-    the E2E suite in the same PR.
+  - **E2E tests (Cypress):** from Phase 4 (the Cypress/CI gate) onward, any
+    phase that ships or changes user-facing behavior extends the E2E suite
+    in the same PR.
   A change and its coverage merge together, through the gate, never
   separately.
 
@@ -89,7 +94,37 @@ Edge Cases section.
 Description covers: why cohorts are derived not stored, how each view
 maps to a slice range, boundary-crossing test cases.
 
-## Phase 4 — Reducer and app state
+## Phase 4 — Cypress setup and CI gate
+
+**Goal:** Cypress wired up, and a CI pipeline that blocks merging unless
+all tests pass. (`requirements.md` → "E2E Tests & CI")
+
+**Scope:**
+- Cypress installed and configured against the Vite dev server
+- One smoke E2E test (app loads, create a list, add a creator)
+- GitHub Actions workflow: on every PR, run unit tests (Vitest) and the
+  Cypress suite — both jobs install with Bun (`oven-sh/setup-bun` +
+  `bun install`) and run scripts via `bun run`
+- Branch protection on `main`: both jobs are required status checks —
+  a PR cannot merge unless unit tests **and** E2E tests pass
+
+**Est. size:** ~120 lines (config + workflow + smoke test).
+
+**Sequencing note:** this phase lands right after the core logic
+(Phases 2–3) and before any UI, so the merge gate protects every UI
+phase's PR and each of Phases 6–10 extends the suite it sets up (see the
+**E2E:** line in each phase's scope). Nothing in it depends on Phases 5–11,
+which is why it slots here. It was requested after the original plan (so
+it would have been Phase 11 under the append rule) but has been
+re-sequenced into execution order — see the documented exception in the
+process rules.
+
+**PR:** `Phase 4: Cypress setup and CI merge gate`
+Description covers: workflow structure (unit job + E2E job), how the dev
+server/build is served in CI, required-checks configuration, and a link to
+a sample failing run proving the gate blocks.
+
+## Phase 5 — Reducer and app state
 
 **Goal:** React state wiring, still minimal UI. (`requirements.md` →
 "React State")
@@ -104,11 +139,11 @@ maps to a slice range, boundary-crossing test cases.
 
 **Est. size:** ~80 lines + ~40 lines tests.
 
-**PR:** `Phase 4: reducer and app state`
+**PR:** `Phase 5: reducer and app state`
 Description covers: why state is scalars only, one-dispatch-per-batch,
 why the modal needs no action of its own.
 
-## Phase 5 — Forms and summary UI
+## Phase 6 — Forms and summary UI
 
 **Goal:** Interactive create / add / take (no modal yet), with totals.
 
@@ -116,7 +151,7 @@ why the modal needs no action of its own.
 - `CreateForm` (capacity, default 10, positive-integer validation)
 - `AddForm` (name + area dropdown, batch queue, blocks empty names)
 - `TakeForm` (number input; direct take this phase, modal comes in
-  Phase 7)
+  Phase 8)
 - `Summary` (total waiting, cohort count)
 - Tailwind layout for the page
 - **Unit tests, same PR:** form validation helpers (capacity, name, count
@@ -126,11 +161,11 @@ why the modal needs no action of its own.
 
 **Est. size:** ~150 lines + ~30 lines unit tests + ~60 lines E2E.
 
-**PR:** `Phase 5: create/add/take forms and summary`
+**PR:** `Phase 6: create/add/take forms and summary`
 Description covers: validation behavior per form, batch-add UX choice,
 known temporary state (take without confirmation), new E2E coverage.
 
-## Phase 6 — Cohort visualization
+## Phase 7 — Cohort visualization
 
 **Goal:** The `[6, 10]`-style view. (`requirements.md` → "Components" →
 CohortList)
@@ -146,12 +181,12 @@ CohortList)
 
 **Est. size:** ~120 lines + ~50 lines E2E.
 
-**PR:** `Phase 6: cohort visualization`
+**PR:** `Phase 7: cohort visualization`
 Description covers: why the middle collapses to one chip (constant DOM),
 key stability, how expansion reads the ledger, spec flow now asserted
 end to end.
 
-## Phase 7 — Take confirmation modal
+## Phase 8 — Take confirmation modal
 
 **Goal:** Two-step take. (`requirements.md` → "Web Component",
 `TakeConfirmModal`)
@@ -162,16 +197,16 @@ end to end.
 - `TakeForm` switches from direct take to opening the modal
 - **E2E:** modal preview lists the oldest creators; confirm removes them;
   cancel leaves the list untouched; take button disabled when empty;
-  taking more than total previews only what's there. Update Phase 5/6
+  taking more than total previews only what's there. Update Phase 6/7
   take tests to go through the modal.
 
 **Est. size:** ~100 lines + ~60 lines E2E (including updated older tests).
 
-**PR:** `Phase 7: take confirmation modal`
+**PR:** `Phase 8: take confirmation modal`
 Description covers: preview as a pure read at `head`, cancel as a no-op,
 the display cap for huge takes, which existing E2E tests changed and why.
 
-## Phase 8 — Onboarding view
+## Phase 9 — Onboarding view
 
 **Goal:** Second view for taken creators. (`requirements.md` →
 `OnboardingView`)
@@ -186,12 +221,12 @@ the display cap for huge takes, which existing E2E tests changed and why.
 
 **Est. size:** ~120 lines + ~40 lines E2E.
 
-**PR:** `Phase 8: onboarding view`
+**PR:** `Phase 9: onboarding view`
 Description covers: one ledger backing both views (`head` as the
 boundary), why served order is free, pagination approach, new E2E
 coverage.
 
-## Phase 9 — IndexedDB persistence
+## Phase 10 — IndexedDB persistence
 
 **Goal:** State survives reload. (`requirements.md` → "Persistence")
 
@@ -209,15 +244,15 @@ coverage.
   everything including after a reload
 
 **Est. size:** ~150 lines + ~60 lines unit tests + ~40 lines E2E. If that
-exceeds the soft limit in practice, split: 9a module + unit tests,
-9b hydration/wiring + E2E.
+exceeds the soft limit in practice, split: 10a module + unit tests,
+10b hydration/wiring + E2E.
 
-**PR:** `Phase 9: IndexedDB persistence`
+**PR:** `Phase 10: IndexedDB persistence`
 Description covers: two-store layout vs snapshot (O(1) takes), transaction
 scope per action, schemaVersion policy, failure handling, why taken
 records are kept (onboarding history).
 
-## Phase 10 — README and writeup
+## Phase 11 — README and writeup
 
 **Goal:** Submission-ready documentation.
 
@@ -232,38 +267,11 @@ records are kept (onboarding history).
 
 **Est. size:** ~120 lines of prose.
 
-**PR:** `Phase 10: README and writeup`
+**PR:** `Phase 11: README and writeup`
 Description covers: summary of the writeup contents and a final checklist
 against the take-home's grading criteria.
 
 ---
-
-## Phase 11 — Cypress setup and CI gate
-
-**Goal:** Cypress wired up, and a CI pipeline that blocks merging unless
-all tests pass. (`requirements.md` → "E2E Tests & CI")
-
-**Scope:**
-- Cypress installed and configured against the Vite dev server
-- One smoke E2E test (app loads, create a list, add a creator)
-- GitHub Actions workflow: on every PR, run unit tests (Vitest) and the
-  Cypress suite — both jobs install with Bun (`oven-sh/setup-bun` +
-  `bun install`) and run scripts via `bun run`
-- Branch protection on `main`: both jobs are required status checks —
-  a PR cannot merge unless unit tests **and** E2E tests pass
-
-**Est. size:** ~120 lines (config + workflow + smoke test).
-
-**Execution-order note:** run this phase right after Phase 3 in practice —
-then the merge gate protects every UI phase's PR, and each of phases 5–9
-extends the suite it sets up (see the **E2E:** line in each phase's scope).
-It is numbered 11 because it was requested after the original plan (per
-the process rules), but nothing in it depends on phases 4–10.
-
-**PR:** `Phase 11: Cypress setup and CI merge gate`
-Description covers: workflow structure (unit job + E2E job), how the dev
-server/build is served in CI, required-checks configuration, and a link to
-a sample failing run proving the gate blocks.
 
 ## Future phases
 
