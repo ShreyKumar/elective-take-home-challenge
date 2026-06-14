@@ -171,4 +171,80 @@ describe('scale', () => {
     expect(counters.head).toBe(99_000)
     expect(total(counters)).toBe(1_000)
   })
+
+  // 1,000 batches of 100 must produce the same counters as a single batch of 100k —
+  // seq assignment is purely positional, not batch-dependent.
+  it('1k batches of 100 yield the same counters as one batch of 100k', () => {
+    let c = create(10)
+    for (let i = 0; i < 1_000; i++) {
+      c = add(c, inputs(100)).counters
+    }
+    expect(c.next).toBe(100_000)
+    expect(c.head).toBe(0)
+    expect(total(c)).toBe(100_000)
+  })
+
+  // Interleaved large adds and takes: total must equal next - head at every checkpoint.
+  it('interleaved large adds and takes keep total consistent', () => {
+    let c = create(50)
+    c = add(c, inputs(50_000)).counters  // total = 50k
+    c = take(c, 30_000).counters         // total = 20k
+    c = add(c, inputs(40_000)).counters  // total = 60k
+    c = take(c, 20_000).counters         // total = 40k
+
+    expect(total(c)).toBe(40_000)
+    expect(c.next - c.head).toBe(40_000)
+    expect(c.head).toBe(50_000)   // 30k + 20k taken
+    expect(c.next).toBe(90_000)   // 50k + 40k added
+  })
+
+  // Ten successive takes of 10k each drain a 100k list to zero; each take returns
+  // a contiguous non-overlapping range covering exactly [0, 100k).
+  it('successive large takes drain the list with contiguous ranges', () => {
+    let c = add(create(10), inputs(100_000)).counters
+    const ranges: { from: number; to: number }[] = []
+
+    for (let i = 0; i < 10; i++) {
+      const result = take(c, 10_000)
+      ranges.push(result.taken)
+      c = result.counters
+    }
+
+    expect(total(c)).toBe(0)
+    expect(c.head).toBe(100_000)
+    for (let i = 0; i < ranges.length - 1; i++) {
+      expect(ranges[i]!.to).toBe(ranges[i + 1]!.from)
+    }
+    expect(ranges[0]!.from).toBe(0)
+    expect(ranges[ranges.length - 1]!.to).toBe(100_000)
+  })
+
+  // With capacity 1 every creator is its own cohort; take must still be O(1)
+  // even though a cohort boundary falls after every single creator.
+  it('capacity 1 at scale: add 50k and take half', () => {
+    let c = create(1)
+    c = add(c, inputs(50_000)).counters
+    expect(total(c)).toBe(50_000)
+
+    const { counters, taken } = take(c, 25_000)
+    expect(taken).toEqual({ from: 0, to: 25_000 })
+    expect(total(counters)).toBe(25_000)
+    expect(counters.head).toBe(25_000)
+    expect(counters.next).toBe(50_000)
+  })
+
+  // total() === next - head must hold after every one of 500 mixed add/take operations.
+  it('total === next - head invariant holds across 500 mixed operations', () => {
+    let c = create(100)
+    c = add(c, inputs(10_000)).counters
+
+    for (let i = 0; i < 500; i++) {
+      if (i % 3 === 0) {
+        c = add(c, inputs(100)).counters
+      } else {
+        c = take(c, 50).counters
+      }
+      expect(total(c)).toBe(c.next - c.head)
+    }
+  })
 })
