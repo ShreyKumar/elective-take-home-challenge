@@ -5,6 +5,7 @@ import {
   create,
   take,
   total,
+  type Counters,
   type CreatorInput,
 } from './waitingList'
 
@@ -14,6 +15,26 @@ function inputs(n: number): CreatorInput[] {
     name: `Creator ${i}`,
     area: AREAS[i % AREAS.length]!,
   }))
+}
+
+/**
+ * Returns the number of waiting creators in each cohort, newest-first.
+ * Creator seq `s` belongs to cohort `floor(s / capacity)`; each cohort k spans
+ * seqs `[k*capacity, (k+1)*capacity)`. Only seqs in `[head, next)` are waiting.
+ * Phase 3 will expose this as a public function; here it lives as a test helper.
+ */
+function cohortsOf(c: Counters): number[] {
+  if (c.next <= c.head) return []
+  const { capacity, head, next } = c
+  const kHead = Math.floor(head / capacity)
+  const kNext = Math.floor((next - 1) / capacity)
+  const result: number[] = []
+  for (let k = kNext; k >= kHead; k--) {
+    const start = Math.max(k * capacity, head)
+    const end = Math.min((k + 1) * capacity, next)
+    result.push(end - start)
+  }
+  return result
 }
 
 describe('create', () => {
@@ -122,37 +143,38 @@ describe('take', () => {
 })
 
 describe('the spec example flow (capacity 10)', () => {
-  // Walks the exact add/take sequence from the requirements spec, asserting total, head, next,
-  // and the taken range at every step. Cohort-array assertions ([8,10,10,10] etc.) come in Phase 3.
-  // Note: bracket notation in comments lists cohorts newest-first, e.g. [partial, ..., oldest-full].
-  it('matches total/head/next at every step', () => {
+  // Walks the exact add/take sequence from the requirements spec, asserting cohort-level
+  // totals (newest-first), head, next, and the taken range at every step.
+  // Bracket notation lists cohorts newest-first: [partial-newest, ..., oldest-full].
+  it('matches cohort totals/head/next at every step', () => {
     let c = create(10)
-    expect(total(c)).toBe(0)
+    expect(cohortsOf(c)).toEqual([]) // empty list has no cohorts
 
     c = add(c, inputs(3)).counters // [] + 3 -> [3]
-    expect(total(c)).toBe(3)
+    expect(cohortsOf(c)).toEqual([3]) // one partial cohort, 3 waiting
 
     c = add(c, inputs(13)).counters // [3] + 13 -> [6, 10]
-    expect(total(c)).toBe(16)
+    expect(cohortsOf(c)).toEqual([6, 10]) // newest cohort has 6, oldest is full
 
     c = add(c, inputs(22)).counters // [6, 10] + 22 -> [8, 10, 10, 10]
-    expect(total(c)).toBe(38)
+    expect(cohortsOf(c)).toEqual([8, 10, 10, 10])
     expect(c.next).toBe(38)
 
     let t = take(c, 4) // [8, 10, 10, 10] take 4 -> [8, 10, 10, 6]
     expect(t.taken).toEqual({ from: 0, to: 4 })
     c = t.counters
-    expect(total(c)).toBe(34)
+    expect(cohortsOf(c)).toEqual([8, 10, 10, 6]) // oldest cohort now has 6 remaining
 
     t = take(c, 7) // [8, 10, 10, 6] take 7 -> [8, 10, 9]
     expect(t.taken).toEqual({ from: 4, to: 11 })
     c = t.counters
-    expect(total(c)).toBe(27) // spec checkpoint
+    expect(cohortsOf(c)).toEqual([8, 10, 9]) // oldest cohort fully consumed; next oldest has 9
+    expect(total(c)).toBe(27) // spec checkpoint: total still derivable from sum of cohorts
 
     t = take(c, 20) // [8, 10, 9] take 20 -> [7]
     expect(t.taken).toEqual({ from: 11, to: 31 })
     c = t.counters
-    expect(total(c)).toBe(7) // spec checkpoint
+    expect(cohortsOf(c)).toEqual([7]) // spec checkpoint
     expect(c.head).toBe(31)
     expect(c.next).toBe(38)
   })
