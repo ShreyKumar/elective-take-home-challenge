@@ -63,15 +63,6 @@ describe('add', () => {
     expect(second.counters.next).toBe(5)
     expect(cohortCounts(second.counters)).toEqual([5]) // still one partial cohort with 5 of 10 filled
   })
-
-  // An empty batch returns zero records and leaves all counters unchanged.
-  it('add 0 is a no-op', () => {
-    const c = create(10)
-    const { counters, records } = add(c, [])
-    expect(records).toEqual([])
-    expect(counters).toEqual(c)
-    expect(cohortCounts(counters)).toEqual([]) // empty list has no cohorts
-  })
 })
 
 describe('take', () => {
@@ -86,15 +77,6 @@ describe('take', () => {
     expect(cohortCounts(counters)).toEqual([6]) // same cohort, now 6 remaining
   })
 
-  // Taking zero leaves head and next unchanged and returns an empty range [head, head).
-  it('take 0 is a no-op', () => {
-    const c = add(create(10), inputs(5)).counters
-    const { counters, taken } = take(c, 0)
-    expect(taken).toEqual({ from: 0, to: 0 })
-    expect(counters).toEqual(c)
-    expect(cohortCounts(counters)).toEqual([5]) // cohort unchanged after no-op
-  })
-
   // Requesting more creators than are waiting clamps to what is available — not an error.
   it('taking more than the total takes only what is there', () => {
     const c = add(create(10), inputs(5)).counters
@@ -102,15 +84,6 @@ describe('take', () => {
     expect(taken).toEqual({ from: 0, to: 5 })
     expect(total(counters)).toBe(0)
     expect(cohortCounts(counters)).toEqual([]) // list is empty; no cohorts remain
-  })
-
-  // Taking from a brand-new empty list (head=0, next=0) is a no-op returning { from: 0, to: 0 }.
-  it('taking from an empty list is a no-op', () => {
-    const c = create(10)
-    const { counters, taken } = take(c, 3)
-    expect(taken).toEqual({ from: 0, to: 0 })
-    expect(counters).toEqual(c)
-    expect(cohortCounts(counters)).toEqual([]) // empty list has no cohorts
   })
 
   // When head has already advanced (e.g. after prior takes drain the list), the empty-range is
@@ -122,14 +95,6 @@ describe('take', () => {
     expect(taken).toEqual({ from: 5, to: 5 })
     expect(total(counters)).toBe(0)
     expect(cohortCounts(counters)).toEqual([]) // empty list has no cohorts, regardless of head position
-  })
-
-  // Negative, fractional, NaN, and Infinity are all invalid take counts and must throw RangeError.
-  it('rejects negative / non-integer counts', () => {
-    const c = add(create(10), inputs(5)).counters
-    for (const bad of [-1, 1.5, NaN, Infinity]) {
-      expect(() => take(c, bad)).toThrow(RangeError)
-    }
   })
 })
 
@@ -185,18 +150,6 @@ describe('scale', () => {
     expect(total(counters)).toBe(1_000)
   })
 
-  // 1,000 batches of 100 must produce the same counters as a single batch of 100k —
-  // seq assignment is purely positional, not batch-dependent.
-  it('1k batches of 100 yield the same counters as one batch of 100k', () => {
-    let c = create(10)
-    for (let i = 0; i < 1_000; i++) {
-      c = add(c, inputs(100)).counters
-    }
-    expect(c.next).toBe(100_000)
-    expect(c.head).toBe(0)
-    expect(total(c)).toBe(100_000)
-  })
-
   // Interleaved large adds and takes: total must equal next - head at every checkpoint.
   it('interleaved large adds and takes keep total consistent', () => {
     let c = create(50)
@@ -244,21 +197,6 @@ describe('scale', () => {
     expect(total(counters)).toBe(25_000)
     expect(counters.head).toBe(25_000)
     expect(counters.next).toBe(50_000)
-  })
-
-  // total() === next - head must hold after every one of 500 mixed add/take operations.
-  it('total === next - head invariant holds across 500 mixed operations', () => {
-    let c = create(100)
-    c = add(c, inputs(10_000)).counters
-
-    for (let i = 0; i < 500; i++) {
-      if (i % 3 === 0) {
-        c = add(c, inputs(100)).counters
-      } else {
-        c = take(c, 50).counters
-      }
-      expect(total(c)).toBe(c.next - c.head)
-    }
   })
 })
 

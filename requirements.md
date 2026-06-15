@@ -157,26 +157,52 @@ components and the reducer only *call* this module; they contain no cohort
 math of their own. If a piece of logic needs a component to test it, it's
 in the wrong file.
 
+**Input validation lives in the React components, not the core module.** The
+components are the only place that guards against invalid input — non-positive
+or non-integer capacity, non-numeric or negative take counts, empty or
+whitespace-only names — and they reject it before anything reaches the core.
+The core functions trust their inputs: they assume capacity is a positive
+integer and counts are non-negative integers, and carry no defensive guards of
+their own. Validation has one home, the UI boundary, never two.
+
 The module is unit-tested directly (Vitest), with no rendering involved.
-Unit tests are written **alongside the code they prove, in the same PR** —
-never as a separate later deliverable — and grow with every phase that
-adds or changes logic. Required coverage:
+Tests assert concrete values and behaviour — **no snapshot testing**
+(`toMatchSnapshot`); snapshots hide what an assertion actually checks and rot
+into rubber-stamps. Unit tests are written **alongside the code they prove, in
+the same PR** — never as a separate later deliverable — and grow with every
+phase that adds or changes logic. Required coverage:
 
 - The full example flow from the spec, step by step:
   `[]` → add 3 → add 13 → add 22 → take 4 → take 7 → total 27 → take 20 →
   total 7
 - Every edge case from the Edge Cases section: add 0 / take 0, take more
-  than total, take from empty, capacity 1, cohorts disappearing when
-  emptied, and rejected inputs (negative, non-integer)
+  than total, take from empty, capacity 1, and cohorts disappearing when
+  emptied (rejecting invalid input is a component concern, not the module's —
+  see below)
 - The derivations: total, per-cohort counts, oldest/newest cohort numbers,
   and the slice ranges used by the modal and the onboarding view
-- A large-input sanity check (e.g. add 100k, take 99k) to confirm the
-  counters behave at scale
+- A large-input **correctness** check (e.g. add 100k, take 99k, plus
+  interleaved batches) confirming the counters stay correct at scale. This
+  proves correctness, not speed — the core operations are O(1)/O(m) by
+  construction, so *performance* is measured at the React-component level
+  (see below), never in this module
 
-Component tests are optional and minimal by comparison — the components are
-thin enough that the type system plus a render smoke test covers them. The
-edge-case behavior is proven in the module tests, once, not re-proven
-through the UI.
+Component tests are minimal — the components are thin enough that the type
+system plus a render smoke test covers most of them. Two things, though, are
+proven at the component level rather than in the module:
+
+- **Input validation** — because rejecting invalid input is the components'
+  job, the tests that prove rejection (bad capacity, empty names, non-numeric
+  counts) live with the components and the E2E suite, not the module.
+- **Performance** — the core operations are O(1)/O(m) by construction, so the
+  thing actually worth proving is that the *components* stay responsive with
+  large inputs: a large cohort list renders in constant DOM (the collapsed
+  "×N full" middle), the onboarding view stays windowed, and a big batch add
+  doesn't block the UI. These performance checks run at the React-component /
+  E2E level, never against the core module.
+
+The cohort/ledger edge-case behavior is still proven in the module tests,
+once, not re-proven through the UI.
 
 ## E2E Tests & CI
 
@@ -297,7 +323,8 @@ empty.
 - Cancelling the confirmation modal — no state change at all
 - Capacity of 1
 - Emptied cohorts disappear (free, via the head-crosses-boundary math)
-- Negative / non-integer / non-numeric input — rejected at the form
+- Negative / non-integer / non-numeric input — rejected in the React
+  components; the core module trusts its inputs and does not re-check them
 - Empty or whitespace-only names — rejected; duplicate names are fine
   (names are labels, not identifiers)
 - Huge adds/takes — covered by the O(1)/O(m) costs above
@@ -307,6 +334,8 @@ empty.
 - `take(n)` returns the taken creators (via seq range), not just a count
 - Taking more than available is a success, not an error
 - Invalid form input is rejected (not silently clamped)
+- Input validation lives only in the React components; the core module trusts
+  its inputs and carries no defensive guards
 - Capacity is fixed at creation — reset to change it
 
 ## Out of Scope
