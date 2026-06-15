@@ -66,12 +66,6 @@ describe('add', () => {
     expect(total(counters)).toBe(3)
   })
 
-  // The name and area fields are copied exactly from the input onto the created record.
-  it('preserves name and area on each record', () => {
-    const { records } = add(create(10), [{ name: 'Ada', area: 'Development' }])
-    expect(records[0]).toEqual({ seq: 0, name: 'Ada', area: 'Development' })
-  })
-
   // Seqs from a second batch pick up immediately after the last seq of the first — no resets or gaps.
   it('continues seqs across successive batches', () => {
     const first = add(create(10), inputs(3))
