@@ -144,6 +144,19 @@ export function newestCohort(counters: Counters): number | undefined {
 }
 
 /**
+ * How many cohorts the waiting list currently spans — `0` when empty. O(1):
+ * cohorts run contiguously from oldest to newest (the middle ones are always
+ * full), so the span is just `newest - oldest + 1`. Equivalent to
+ * `cohortCounts(counters).length` but without materializing the array.
+ */
+export function cohortCount(counters: Counters): number {
+  const newest = newestCohort(counters)
+  const oldest = oldestCohort(counters)
+  if (newest === undefined || oldest === undefined) return 0
+  return newest - oldest + 1
+}
+
+/**
  * The waiting seq range within a single cohort, for expanding a cohort row to
  * list its creators. Returns an empty range (`from === to`) for a cohort with
  * nothing currently waiting.
