@@ -1,0 +1,7 @@
+{
+  "compilerOptions": {
+    "types": ["cypress"],
+    "noEmit": true
+  },
+  "include": ["**/*.ts", "../cypress.config.ts"]
+}

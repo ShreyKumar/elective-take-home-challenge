@@ -252,7 +252,43 @@ Description covers: two-store layout vs snapshot (O(1) takes), transaction
 scope per action, schemaVersion policy, failure handling, why taken
 records are kept (onboarding history).
 
-## Phase 11 — README and writeup
+## Phase 11 — Component performance tests
+
+**Goal:** Prove the rendering-performance properties from `requirements.md`
+hold at the component / E2E level — as **structural DOM-bound assertions**,
+not wall-clock timing. (`requirements.md` → "Core Module & Unit Tests",
+component-level **Performance** bullet)
+
+**Scope:**
+- `CohortList`: load a large list (e.g. add 100k creators across many
+  cohorts) and assert the rendered cohort rows stay **bounded** — newest
+  cohort + one collapsed "×N full" chip + oldest — regardless of cohort
+  count. Proves constant DOM.
+- `OnboardingView`: take a large number, then assert only the windowed page
+  of rows is in the DOM, not every served creator. Proves windowing.
+- A coarse responsiveness check: a large batch add completes without the
+  interaction timing out — kept structural/coarse, with no tight millisecond
+  budget (wall-clock timing is flaky in a browser).
+- These extend the **Cypress** E2E suite from Phase 4 and run in the same CI
+  gate. No timing assertions land in the unit suite — the core's O(1)/O(m)
+  costs are guaranteed by construction, not measured.
+
+**Est. size:** ~70 lines E2E.
+
+**Execution-order note:** run this **right after Phase 9** — once every
+component exists (`CohortList` in Phase 7, `OnboardingView` in Phase 9). The
+tests target rendering only, so nothing here depends on persistence
+(Phase 10). It is numbered 11 because it was requested after the original
+plan (per the process rules), but it executes right after Phase 9 — before
+persistence (Phase 10) and the README (Phase 12).
+
+**PR:** `Phase 11: component performance tests`
+Description covers: why performance is verified at the component/E2E level
+(rendering only manifests in a real browser), why structural DOM-count
+assertions beat flaky wall-clock timing, and the constant-DOM and windowing
+properties asserted.
+
+## Phase 12 — README and writeup
 
 **Goal:** Submission-ready documentation.
 
@@ -267,7 +303,7 @@ records are kept (onboarding history).
 
 **Est. size:** ~120 lines of prose.
 
-**PR:** `Phase 11: README and writeup`
+**PR:** `Phase 12: README and writeup`
 Description covers: summary of the writeup contents and a final checklist
 against the take-home's grading criteria.
 
@@ -276,5 +312,5 @@ against the take-home's grading criteria.
 ## Future phases
 
 Every change requested after this plan was written gets appended here as
-Phase 12, 13, … with the same structure (goal, scope, est. size, PR), and
+Phase 13, 14, … with the same structure (goal, scope, est. size, PR), and
 ships as its own PR.
