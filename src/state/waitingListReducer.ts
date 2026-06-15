@@ -3,7 +3,7 @@
 // UI highlighting — no cohorts, no ledger (the ledger lives in a stable buffer
 // next to the reducer; see useWaitingList). Cohort math stays in src/lib.
 
-import { create, take, type Counters, type Creator, type Range } from '../lib/waitingList'
+import { create, take, type Counters, type Range } from '../lib/waitingList'
 
 export const DEFAULT_CAPACITY = 10
 
@@ -16,7 +16,7 @@ export interface WaitingListState {
 
 export type Action =
   | { type: 'reset'; capacity: number }
-  | { type: 'add'; records: Creator[] }
+  | { type: 'add'; count: number }
   | { type: 'take'; count: number }
 
 export function initWaitingList(capacity: number = DEFAULT_CAPACITY): WaitingListState {
@@ -33,10 +33,11 @@ export function waitingListReducer(
 
     case 'add':
       // The records are appended to the ledger buffer by the caller; here we
-      // only advance `next` by the batch size (scalars only).
+      // only advance `next` by the batch size (scalars only). `lastTaken` is
+      // carried forward via the spread so an add never clears the highlight.
       return {
         ...state,
-        counters: { ...state.counters, next: state.counters.next + action.records.length },
+        counters: { ...state.counters, next: state.counters.next + action.count },
       }
 
     case 'take': {

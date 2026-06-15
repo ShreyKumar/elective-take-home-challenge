@@ -15,7 +15,9 @@ import {
 
 export interface WaitingList {
   state: WaitingListState
-  /** The append-only ledger; index === seq. Stable across renders. */
+  /** The append-only ledger; index === seq. Mutated in place, so read its
+   *  `.length` or seq-range slices — do not use it as a memo/effect dependency,
+   *  since its identity does not change as it grows. */
   ledger: readonly Creator[]
   reset: (capacity: number) => void
   addCreators: (inputs: readonly CreatorInput[]) => void
@@ -32,15 +34,18 @@ export function useWaitingList(capacity: number = DEFAULT_CAPACITY): WaitingList
   }, [])
 
   const addCreators = useCallback((inputs: readonly CreatorInput[]) => {
-    // next === ledger length (invariant), so the buffer is the current source
-    // of truth for seq assignment — robust even across rapid dispatches.
+    // Assign seqs via the core module. `next` comes from the live ledger length
+    // (the invariant next === ledger.length), which is robust across rapid
+    // dispatches where reducer state would be a stale closure.
     const { records } = add(
-      { capacity, head: 0, next: ledgerRef.current.length },
+      { ...state.counters, next: ledgerRef.current.length },
       inputs,
     )
-    ledgerRef.current.push(...records)
-    dispatch({ type: 'add', records })
-  }, [capacity])
+    // Append one at a time — a spread `push(...records)` overflows the call
+    // stack for very large batches.
+    for (const record of records) ledgerRef.current.push(record)
+    dispatch({ type: 'add', count: records.length })
+  }, [state.counters])
 
   const takeCreators = useCallback((count: number) => {
     // Records are not touched — head moves and they fall onto the served side.
