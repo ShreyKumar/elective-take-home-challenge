@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   AREAS,
   add,
+  cohortCount,
   cohortCounts,
   cohortOf,
   cohortRange,
@@ -238,6 +239,32 @@ describe('oldest / newest cohort numbers', () => {
     expect(newestCohort(c)).toBe(2)
     // cohortCounts spans exactly oldest..newest, newest-first.
     expect(cohortCounts(c)).toHaveLength(newestCohort(c)! - oldestCohort(c)! + 1)
+  })
+})
+
+describe('cohortCount', () => {
+  // An empty list spans zero cohorts; it must agree with cohortCounts().length
+  // everywhere without materializing the array.
+  it('is 0 for an empty list', () => {
+    expect(cohortCount(create(10))).toBe(0)
+    expect(cohortCount(create(10))).toBe(cohortCounts(create(10)).length)
+  })
+
+  // A single partial cohort and the spec's [8,10,10,10] state span 1 and 4.
+  it('counts the cohorts a non-empty list spans', () => {
+    const one = add(create(10), inputs(3)).counters
+    expect(cohortCount(one)).toBe(1) // [3] — one partial cohort
+
+    const four = add(create(10), inputs(38)).counters
+    expect(cohortCount(four)).toBe(4) // [8,10,10,10]
+    expect(cohortCount(four)).toBe(cohortCounts(four).length)
+  })
+
+  // When head crosses a cohort boundary the emptied cohort stops being counted.
+  it('drops a cohort once head crosses its boundary', () => {
+    const c = take(add(create(10), inputs(38)).counters, 10).counters // head=10
+    expect(cohortCount(c)).toBe(3) // cohort 0 fully served and gone
+    expect(cohortCount(c)).toBe(cohortCounts(c).length)
   })
 })
 

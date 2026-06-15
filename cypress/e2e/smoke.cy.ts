@@ -1,7 +1,6 @@
-// Smoke test: proves the Cypress pipeline runs against the built app. The app
-// is still the Phase 1 scaffold (a title only), so this asserts the page loads
-// and renders its heading. Real user-flow E2E (create / add / take / onboard)
-// arrives with the UI in Phases 6–9.
+// Smoke test: proves the Cypress pipeline runs against the built app — the page
+// loads and renders its heading. The real user-flow E2E lives in the per-feature
+// specs (forms.cy.ts from Phase 6 onward); this stays a minimal liveness check.
 describe('app smoke test', () => {
   it('loads and renders the heading', () => {
     cy.visit('/')
