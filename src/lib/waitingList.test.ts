@@ -42,11 +42,13 @@ describe('create', () => {
   it('starts empty', () => {
     expect(create(10)).toEqual({ capacity: 10, head: 0, next: 0 })
     expect(total(create(10))).toBe(0)
+    expect(cohortsOf(create(10))).toEqual([]) // freshly created list has no cohorts
   })
 
   // Capacity of 1 is the minimum valid value; it must be accepted without error.
   it('allows capacity 1', () => {
     expect(create(1)).toEqual({ capacity: 1, head: 0, next: 0 })
+    expect(cohortsOf(create(1))).toEqual([]) // freshly created capacity-1 list has no cohorts
   })
 
   // Zero, negatives, fractions, NaN, and Infinity are all invalid capacities and must throw RangeError.
