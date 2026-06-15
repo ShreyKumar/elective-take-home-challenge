@@ -90,10 +90,12 @@ describe('take', () => {
   // Taking n creators advances head by n and returns the half-open range [from, from+n).
   it('moves head and reports the taken range', () => {
     const c = add(create(10), inputs(10)).counters
+    expect(cohortsOf(c)).toEqual([10]) // one full cohort before taking
     const { counters, taken } = take(c, 4)
     expect(taken).toEqual({ from: 0, to: 4 })
     expect(counters.head).toBe(4)
     expect(total(counters)).toBe(6)
+    expect(cohortsOf(counters)).toEqual([6]) // same cohort, now 6 remaining
   })
 
   // Taking zero leaves head and next unchanged and returns an empty range [head, head).
@@ -102,6 +104,7 @@ describe('take', () => {
     const { counters, taken } = take(c, 0)
     expect(taken).toEqual({ from: 0, to: 0 })
     expect(counters).toEqual(c)
+    expect(cohortsOf(counters)).toEqual([5]) // cohort unchanged after no-op
   })
 
   // Requesting more creators than are waiting clamps to what is available — not an error.
@@ -110,6 +113,7 @@ describe('take', () => {
     const { counters, taken } = take(c, 100)
     expect(taken).toEqual({ from: 0, to: 5 })
     expect(total(counters)).toBe(0)
+    expect(cohortsOf(counters)).toEqual([]) // list is empty; no cohorts remain
   })
 
   // Taking from a brand-new empty list (head=0, next=0) is a no-op returning { from: 0, to: 0 }.
@@ -118,6 +122,7 @@ describe('take', () => {
     const { counters, taken } = take(c, 3)
     expect(taken).toEqual({ from: 0, to: 0 })
     expect(counters).toEqual(c)
+    expect(cohortsOf(counters)).toEqual([]) // empty list has no cohorts
   })
 
   // When head has already advanced (e.g. after prior takes drain the list), the empty-range is
@@ -128,6 +133,7 @@ describe('take', () => {
     const { counters, taken } = take(afterTake.counters, 3)
     expect(taken).toEqual({ from: 5, to: 5 })
     expect(total(counters)).toBe(0)
+    expect(cohortsOf(counters)).toEqual([]) // empty list has no cohorts, regardless of head position
   })
 
   // Negative, fractional, NaN, and Infinity are all invalid take counts and must throw RangeError.
