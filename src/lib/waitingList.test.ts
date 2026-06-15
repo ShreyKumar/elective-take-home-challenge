@@ -64,6 +64,7 @@ describe('add', () => {
     expect(records.map((r) => r.seq)).toEqual([0, 1, 2])
     expect(counters.next).toBe(3)
     expect(total(counters)).toBe(3)
+    expect(cohortsOf(counters)).toEqual([3]) // one partial cohort with 3 of 10 filled
   })
 
   // Seqs from a second batch pick up immediately after the last seq of the first — no resets or gaps.
@@ -72,6 +73,7 @@ describe('add', () => {
     const second = add(first.counters, inputs(2))
     expect(second.records.map((r) => r.seq)).toEqual([3, 4])
     expect(second.counters.next).toBe(5)
+    expect(cohortsOf(second.counters)).toEqual([5]) // still one partial cohort with 5 of 10 filled
   })
 
   // An empty batch returns zero records and leaves all counters unchanged.
@@ -80,6 +82,7 @@ describe('add', () => {
     const { counters, records } = add(c, [])
     expect(records).toEqual([])
     expect(counters).toEqual(c)
+    expect(cohortsOf(counters)).toEqual([]) // empty list has no cohorts
   })
 })
 
