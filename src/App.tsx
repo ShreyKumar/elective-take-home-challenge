@@ -3,7 +3,7 @@ import { useWaitingList } from './state/useWaitingList'
 
 function App() {
   const wl = useWaitingList()
-  const { counters, lastTaken } = wl.state
+  const { counters } = wl.state
 
   return (
     <main className="mx-auto max-w-3xl p-8">
@@ -26,8 +26,6 @@ function App() {
         <dd>{total(counters)}</dd>
         <dt className="text-gray-500">ledger size</dt>
         <dd>{wl.ledger.length}</dd>
-        <dt className="text-gray-500">last taken</dt>
-        <dd>{lastTaken ? `[${lastTaken.from}, ${lastTaken.to})` : '—'}</dd>
       </dl>
 
       {/* Temporary debug controls to prove the wiring; real forms land in Phase 6. */}
