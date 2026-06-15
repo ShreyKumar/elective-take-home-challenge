@@ -300,6 +300,15 @@ describe('cohortCounts boundaries', () => {
     c = take(c, 3).counters // head=8, list empty
     expect(cohortCounts(c)).toEqual([])
   })
+
+  // Capacity 1 is the densest boundary case: every seq is its own cohort, so a
+  // boundary falls after every creator. Counts must still be a run of 1s.
+  it('handles capacity 1 (every creator its own cohort)', () => {
+    let c = add(create(1), inputs(3)).counters // seqs 0,1,2 -> cohorts 0,1,2
+    expect(cohortCounts(c)).toEqual([1, 1, 1])
+    c = take(c, 1).counters // head=1, cohort 0 gone
+    expect(cohortCounts(c)).toEqual([1, 1])
+  })
 })
 
 describe('oldest / newest cohort numbers', () => {
@@ -334,16 +343,12 @@ describe('cohortRange (row expansion)', () => {
     expect(beyond.from).toBe(beyond.to)
   })
 
-  // Each cohort's range width must equal its cohortCounts entry (newest-first).
-  it('range widths agree with cohortCounts', () => {
-    const c = take(add(create(10), inputs(25)).counters, 12).counters
-    const newest = newestCohort(c)!
-    const counts = cohortCounts(c)
-    counts.forEach((count, i) => {
-      const k = newest - i
-      const { from, to } = cohortRange(c, k)
-      expect(to - from).toBe(count)
-    })
+  // Capacity 1: each cohort spans exactly one seq, so ranges are unit-width.
+  it('handles capacity 1 (single-seq cohorts)', () => {
+    const c = take(add(create(1), inputs(3)).counters, 1).counters // head=1, next=3
+    expect(cohortRange(c, 1)).toEqual({ from: 1, to: 2 })
+    expect(cohortRange(c, 2)).toEqual({ from: 2, to: 3 })
+    expect(cohortRange(c, 0)).toEqual({ from: 1, to: 1 }) // served -> empty
   })
 })
 

@@ -131,25 +131,6 @@ export function cohortOf(seq: number, capacity: number): number {
   return Math.floor(seq / capacity)
 }
 
-/**
- * Waiting count per cohort, newest cohort first (the `[8, 10, 10, 10]` view).
- * Every cohort between newest and oldest is full, so only the two ends can be
- * partial. An empty list yields `[]`.
- */
-export function cohortCounts(counters: Counters): number[] {
-  if (counters.next <= counters.head) return []
-  const { capacity, head, next } = counters
-  const newest = cohortOf(next - 1, capacity)
-  const oldest = cohortOf(head, capacity)
-  const result: number[] = []
-  for (let k = newest; k >= oldest; k--) {
-    const start = Math.max(k * capacity, head)
-    const end = Math.min((k + 1) * capacity, next)
-    result.push(end - start)
-  }
-  return result
-}
-
 /** Cohort number of the oldest waiting creator, or `undefined` when empty. */
 export function oldestCohort(counters: Counters): number | undefined {
   if (counters.next <= counters.head) return undefined
@@ -172,6 +153,24 @@ export function cohortRange(counters: Counters, cohort: number): Range {
   const from = Math.max(cohort * capacity, head)
   const to = Math.max(from, Math.min((cohort + 1) * capacity, next))
   return { from, to }
+}
+
+/**
+ * Waiting count per cohort, newest cohort first (the `[8, 10, 10, 10]` view).
+ * Every cohort between newest and oldest is full, so only the two ends can be
+ * partial. Each entry is the width of the matching `cohortRange`, so counts and
+ * ranges share one source of truth. An empty list yields `[]`.
+ */
+export function cohortCounts(counters: Counters): number[] {
+  const newest = newestCohort(counters)
+  const oldest = oldestCohort(counters)
+  if (newest === undefined || oldest === undefined) return []
+  const result: number[] = []
+  for (let k = newest; k >= oldest; k--) {
+    const { from, to } = cohortRange(counters, k)
+    result.push(to - from)
+  }
+  return result
 }
 
 /**
