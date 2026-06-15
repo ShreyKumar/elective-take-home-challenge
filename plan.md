@@ -307,10 +307,51 @@ properties asserted.
 Description covers: summary of the writeup contents and a final checklist
 against the take-home's grading criteria.
 
+## Phase 13 — Consolidate unit tests to the core module
+
+**Goal:** Make `src/lib/waitingList.test.ts` the single home for unit tests —
+remove the thin-wrapper suites and lean on the type system plus the Cypress E2E
+gate for everything else. A one-time cleanup, requested after the original plan.
+
+**Scope:**
+- Delete `src/state/waitingListReducer.test.ts` (Phase 5) and
+  `src/components/validation.test.ts` (Phase 6).
+- Keep `src/lib/waitingList.test.ts` — the exhaustive core + derivations
+  suite — unchanged. No production code changes.
+- This is a **one-time** removal of the two suites that exist today, **not** a
+  blanket ban: the Phase 10 persistence module still ships its own unit tests
+  (real IndexedDB I/O — corrupt / old-schema discard and the in-memory
+  fallback — which requirements.md calls for and E2E can't cover cleanly).
+- **Why it's safe:** the reducer is a thin scalar wrapper over the core, and
+  requirements.md already designates input-validation rejection as a
+  component / E2E concern, not a module one. The reducer's reset/add/take wiring
+  and the validation rejections (bad capacity, empty / whitespace-only names)
+  are already proven end to end in `cypress/e2e/forms.cy.ts`.
+- **Trade-off (documented):** the parser lexical edges pinned in
+  `validation.test.ts` (leading zeros, exponents, `1,000`, tab/newline trim) are
+  no longer asserted at the unit level; E2E still covers the user-visible
+  rejections (`abc` / `0` / `-1` / `1.5`) but not every lexical case. Accepted
+  as the cost of a single unit-test home.
+
+**Est. size:** ~95 lines removed across two files; 0 added.
+
+**Execution-order note:** numbered 13 by request order, but it should execute
+**right before Phase 12 (README)** so the writeup documents the final,
+consolidated suite rather than one that's about to change — the same
+number-vs-execution split already used for Phase 4 and Phase 11. It has no code
+dependencies and only deletes test files, so it can run any time after Phase 6.
+
+**PR:** `Phase 13: consolidate unit tests to the core module`
+Description covers: which suites were removed and why each is redundant
+(reducer = thin wrapper proven via E2E; validation = component / E2E concern per
+requirements.md), the one-time scope (Phase 10 persistence tests retained), the
+parser-edge trade-off, and confirmation that `bun run test` and the Cypress gate
+stay green.
+
 ---
 
 ## Future phases
 
 Every change requested after this plan was written gets appended here as
-Phase 13, 14, … with the same structure (goal, scope, est. size, PR), and
+Phase 14, 15, … with the same structure (goal, scope, est. size, PR), and
 ships as its own PR.
