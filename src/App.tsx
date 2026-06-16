@@ -4,6 +4,7 @@ import { CreateForm } from './components/CreateForm'
 import { Summary } from './components/Summary'
 import { AddForm } from './components/AddForm'
 import { TakeForm } from './components/TakeForm'
+import { CohortList } from './components/CohortList'
 
 function App() {
   const wl = useWaitingList()
@@ -27,6 +28,7 @@ function App() {
       <Summary total={totalWaiting} cohortCount={cohorts} />
       <AddForm onAdd={wl.addCreators} />
       <TakeForm disabled={totalWaiting === 0} onTake={wl.takeCreators} />
+      <CohortList counters={counters} ledger={wl.ledger} />
     </main>
   )
 }
