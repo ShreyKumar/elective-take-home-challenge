@@ -9,6 +9,11 @@ other in order; the app is runnable after every phase.
 
 - One branch per phase (`phase-1-scaffold`, `phase-2-core`, …), one PR per
   phase, merged before the next phase starts.
+- **The README / writeup is always the last phase to execute.** It is the final
+  deliverable and documents the finished app, so every other phase — including
+  any appended later — runs before it. New phases are appended *after* it by
+  number (per the append rule) but carry an execution-order note placing them
+  *before* it: the README's number may be passed, its execution slot never is.
 - **Authorship:** commits are authored by Claude Code
   (`Claude Code <noreply@anthropic.com>` via `git commit --author`),
   with the human as committer. PRs are opened with whatever GitHub
@@ -301,6 +306,11 @@ properties asserted.
 
 **Est. size:** ~120 lines of prose.
 
+**Execution-order note:** always runs **last** — after every other phase,
+including any appended after it (e.g. Phases 13 and 14 are numbered later but
+execute before it) — so the writeup documents the final state. Its number may be
+passed by later phases; its execution slot is always last.
+
 **PR:** `Phase 12: README and writeup`
 Description covers: summary of the writeup contents and a final checklist
 against the take-home's grading criteria.
@@ -386,4 +396,5 @@ Size and 2.4.11 Focus Not Obscured), and the new accessibility checks in the gat
 
 Every change requested after this plan was written gets appended here as
 Phase 15, 16, … with the same structure (goal, scope, est. size, PR), and
-ships as its own PR.
+ships as its own PR — always executing **before** the README (Phase 12), which
+stays the last phase to run.
