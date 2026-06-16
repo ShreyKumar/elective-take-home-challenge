@@ -9,31 +9,17 @@ other in order; the app is runnable after every phase.
 
 - One branch per phase (`phase-1-scaffold`, `phase-2-core`, …), one PR per
   phase, merged before the next phase starts.
-- **The README / writeup is always the last phase to execute.** It is the final
-  deliverable and documents the finished app, so every other phase — including
-  any appended later — runs before it. New phases are appended *after* it by
-  number (per the append rule) but carry an execution-order note placing them
-  *before* it: the README's number may be passed, its execution slot never is.
+- **Phases are numbered in execution order** — Phase N is built and merged
+  before Phase N+1, and the plan lists them in that order.
+- **The README / writeup is always the last phase.** It documents the finished
+  app, so it runs after everything else. A change requested later is added as a
+  new phase **immediately before the README**, and the README is renumbered to
+  stay last — so the numbers always match the execution order.
 - **Authorship:** commits are authored by Claude Code
   (`Claude Code <noreply@anthropic.com>` via `git commit --author`),
   with the human as committer. PRs are opened with whatever GitHub
   credential is configured; GitHub shows that account as the PR opener
   (see the AI-collaboration writeup for attribution).
-- Every change requested **after** this plan is written becomes a new
-  numbered phase appended to this file — never folded silently into an
-  existing phase. **One documented exception:** the Cypress + CI gate was
-  requested after the original plan and would have been appended as
-  Phase 11, but because it is a prerequisite for the E2E tests that the UI
-  phases write, it has been re-sequenced into its logical execution slot as
-  Phase 4 (this renumbered the old phases 4–10 to 5–11). This is a one-time
-  reorganization, recorded here; the append rule otherwise still holds.
-- **Documented change — take modal removed, accessibility added.** The Take
-  confirmation modal (originally Phase 8) was removed at the user's request:
-  taking is now a direct one-step action. Phase 8 is kept below as a tombstone
-  rather than renumbered, so Phases 9–13 keep their numbers, and a new
-  **Phase 14 — WCAG 2.2 accessibility pass** is appended per the append rule.
-  The app must conform to **WCAG 2.2 Level AA** throughout (see `requirements.md`
-  → "Accessibility"); the remaining UI phase (Onboarding) builds to that bar.
 - Each PR description states: what changed, why (linking the relevant
   requirements section), the decisions made, and how it was verified.
 - **Both test suites evolve with every phase.** Tests are never a separate
@@ -45,6 +31,21 @@ other in order; the app is runnable after every phase.
     in the same PR.
   A change and its coverage merge together, through the gate, never
   separately.
+- **Changes recorded after the original plan** (kept here so nothing is folded
+  in silently):
+  - **Cypress + CI gate** was requested after the original plan and re-sequenced
+    early (Phase 4) because the merge gate is a prerequisite for every UI phase's
+    E2E.
+  - **Component performance tests, the WCAG 2.2 accessibility pass, and the
+    test-suite consolidation** were each requested after the original plan and
+    slotted into their execution-order positions below.
+  - **The Take confirmation modal was removed entirely** — taking is a direct
+    one-step action (see `requirements.md` → "Web Component", "Edge Cases"); no
+    `TakeConfirmModal` ships.
+  - **The app must conform to WCAG 2.2 Level AA** throughout (see
+    `requirements.md` → "Accessibility"); see Phase 11.
+  - **The phases were then renumbered into execution order** so the numbers match
+    the order of work and the README is last.
 
 ---
 
@@ -123,13 +124,11 @@ all tests pass. (`requirements.md` → "E2E Tests & CI")
 **Est. size:** ~120 lines (config + workflow + smoke test).
 
 **Sequencing note:** this phase lands right after the core logic
-(Phases 2–3) and before any UI, so the merge gate protects every UI
-phase's PR and each of Phases 6–10 extends the suite it sets up (see the
-**E2E:** line in each phase's scope). Nothing in it depends on Phases 5–11,
-which is why it slots here. It was requested after the original plan (so
-it would have been Phase 11 under the append rule) but has been
-re-sequenced into execution order — see the documented exception in the
-process rules.
+(Phases 2–3) and before any UI, so the merge gate protects every UI phase's PR
+and each later UI phase extends the suite it sets up (see the **E2E:** line in
+each phase's scope). It was requested after the original plan but re-sequenced
+into this early execution slot because the gate is a prerequisite for the E2E
+tests the UI phases write (recorded in the process rules).
 
 **PR:** `Phase 4: Cypress setup and CI merge gate`
 Description covers: workflow structure (unit job + E2E job), how the dev
@@ -197,19 +196,7 @@ Description covers: why the middle collapses to one chip (constant DOM),
 key stability, how expansion reads the ledger, spec flow now asserted
 end to end.
 
-## Phase 8 — Take confirmation modal *(removed)*
-
-**Removed at the user's request.** Taking is a direct one-step action with no
-confirmation modal — pressing Take removes up to N oldest creators immediately
-(see `requirements.md` → "Web Component", "Edge Cases"). No `TakeConfirmModal`
-component ships, and the Phase 6/7 take tests stay as direct takes.
-
-The phase number is kept here as a **tombstone** so the later phase numbers are
-unchanged (no renumber); see the documented change in the process rules. The
-accessibility work this UI would have needed is folded into the WCAG 2.2 pass
-(**Phase 14**).
-
-## Phase 9 — Onboarding view
+## Phase 8 — Onboarding view
 
 **Goal:** Second view for taken creators. (`requirements.md` →
 `OnboardingView`)
@@ -218,16 +205,50 @@ accessibility work this UI would have needed is folded into the WCAG 2.2 pass
 - Tab navigation between Waiting list and Onboarding views
 - `OnboardingView`: all creators below `head` in served order, paginated/
   windowed, most recent take highlighted via the last-taken range
-- **E2E:** confirmed creators appear in the Onboarding view in served
-  order with the latest take highlighted; waiting view no longer shows
-  them; tab switching preserves both views
+- **E2E:** taken creators appear in the Onboarding view in served order with
+  the latest take highlighted; waiting view no longer shows them; tab switching
+  preserves both views
 
 **Est. size:** ~120 lines + ~40 lines E2E.
 
-**PR:** `Phase 9: onboarding view`
+**PR:** `Phase 8: onboarding view`
 Description covers: one ledger backing both views (`head` as the
 boundary), why served order is free, pagination approach, new E2E
 coverage.
+
+## Phase 9 — Component performance tests
+
+**Goal:** Prove the rendering-performance properties from `requirements.md`
+hold at the component / E2E level — as **structural DOM-bound assertions**,
+not wall-clock timing. (`requirements.md` → "Core Module & Unit Tests",
+component-level **Performance** bullet)
+
+**Scope:**
+- `CohortList`: load a large list (e.g. add 100k creators across many
+  cohorts) and assert the rendered cohort rows stay **bounded** — newest
+  cohort + one collapsed "×N full" chip + oldest — regardless of cohort
+  count. Proves constant DOM.
+- `OnboardingView`: take a large number, then assert only the windowed page
+  of rows is in the DOM, not every served creator. Proves windowing.
+- A coarse responsiveness check: a large batch add completes without the
+  interaction timing out — kept structural/coarse, with no tight millisecond
+  budget (wall-clock timing is flaky in a browser).
+- These extend the **Cypress** E2E suite from Phase 4 and run in the same CI
+  gate. No timing assertions land in the unit suite — the core's O(1)/O(m)
+  costs are guaranteed by construction, not measured.
+
+**Est. size:** ~70 lines E2E.
+
+**Sequencing note:** runs right after the Onboarding view (Phase 8) — once every
+component exists (`CohortList` in Phase 7, `OnboardingView` in Phase 8) — and
+before persistence (Phase 10), since these tests target rendering only and don't
+depend on it.
+
+**PR:** `Phase 9: component performance tests`
+Description covers: why performance is verified at the component/E2E level
+(rendering only manifests in a real browser), why structural DOM-count
+assertions beat flaky wall-clock timing, and the constant-DOM and windowing
+properties asserted.
 
 ## Phase 10 — IndexedDB persistence
 
@@ -255,67 +276,41 @@ Description covers: two-store layout vs snapshot (O(1) takes), transaction
 scope per action, schemaVersion policy, failure handling, why taken
 records are kept (onboarding history).
 
-## Phase 11 — Component performance tests
+## Phase 11 — WCAG 2.2 accessibility pass
 
-**Goal:** Prove the rendering-performance properties from `requirements.md`
-hold at the component / E2E level — as **structural DOM-bound assertions**,
-not wall-clock timing. (`requirements.md` → "Core Module & Unit Tests",
-component-level **Performance** bullet)
+**Goal:** Bring the whole app to **WCAG 2.2 Level AA** and prove it.
+(`requirements.md` → "Accessibility")
 
 **Scope:**
-- `CohortList`: load a large list (e.g. add 100k creators across many
-  cohorts) and assert the rendered cohort rows stay **bounded** — newest
-  cohort + one collapsed "×N full" chip + oldest — regardless of cohort
-  count. Proves constant DOM.
-- `OnboardingView`: take a large number, then assert only the windowed page
-  of rows is in the DOM, not every served creator. Proves windowing.
-- A coarse responsiveness check: a large batch add completes without the
-  interaction timing out — kept structural/coarse, with no tight millisecond
-  budget (wall-clock timing is flaky in a browser).
-- These extend the **Cypress** E2E suite from Phase 4 and run in the same CI
-  gate. No timing assertions land in the unit suite — the core's O(1)/O(m)
-  costs are guaranteed by construction, not measured.
+- Audit every view and control with **axe-core** (`cypress-axe`): the Waiting
+  and Onboarding views, all forms, and the cohort/onboarding lists; fix all
+  serious / critical violations.
+- Concrete fixes across the existing components:
+  - programmatic labels on every input; errors in a `role="alert"` live region
+  - visible focus styles and a logical, keyboard-operable focus order; the
+    view tabs operable by keyboard, with focus never obscured (SC 2.4.11)
+  - interactive targets ≥ 24×24 CSS px (SC 2.5.8)
+  - text-not-colour for the "next to be served" cohort; AA contrast throughout
+    (SC 1.4.3, 1.4.11)
+  - `role="status"` / `aria-live` announcements for total and take updates
+    (SC 4.1.3)
+- **E2E:** add `cypress-axe` checks (`cy.injectAxe` / `cy.checkA11y`) on the
+  main views, asserting no serious/critical violations; runs in the same CI gate.
 
-**Est. size:** ~70 lines E2E.
+**Est. size:** ~60 lines of a11y fixes across components + ~40 lines E2E (plus
+the `cypress-axe` dev dependency).
 
-**Execution-order note:** run this **right after Phase 9** — once every
-component exists (`CohortList` in Phase 7, `OnboardingView` in Phase 9). The
-tests target rendering only, so nothing here depends on persistence
-(Phase 10). It is numbered 11 because it was requested after the original
-plan (per the process rules), but it executes right after Phase 9 — before
-persistence (Phase 10) and the README (Phase 12).
+**Sequencing note:** runs after the UI and persistence phases (6–10), so the
+whole app — every view and control, including persistence's loading/fallback
+states — is in place to audit, and before the README so the writeup can state
+WCAG 2.2 AA conformance.
 
-**PR:** `Phase 11: component performance tests`
-Description covers: why performance is verified at the component/E2E level
-(rendering only manifests in a real browser), why structural DOM-count
-assertions beat flaky wall-clock timing, and the constant-DOM and windowing
-properties asserted.
+**PR:** `Phase 11: WCAG 2.2 accessibility pass`
+Description covers: the `cypress-axe` setup, the conformance target (2.2 AA), the
+specific success criteria addressed (including the 2.2 additions 2.5.8 Target
+Size and 2.4.11 Focus Not Obscured), and the new accessibility checks in the gate.
 
-## Phase 12 — README and writeup
-
-**Goal:** Submission-ready documentation.
-
-**Scope:** `README.md`
-- Run/test instructions
-- Edge cases and how they're handled
-- Business-logic decisions (from requirements.md "Decisions to Document")
-- Performance/structure notes (ledger design, O(1) take)
-- AI collaboration section: where AI helped, where it was overridden, one
-  wrong/sloppy AI moment and what was done instead, what was written by
-  hand and why
-
-**Est. size:** ~120 lines of prose.
-
-**Execution-order note:** always runs **last** — after every other phase,
-including any appended after it (e.g. Phases 13 and 14 are numbered later but
-execute before it) — so the writeup documents the final state. Its number may be
-passed by later phases; its execution slot is always last.
-
-**PR:** `Phase 12: README and writeup`
-Description covers: summary of the writeup contents and a final checklist
-against the take-home's grading criteria.
-
-## Phase 13 — Consolidate unit tests to the core module
+## Phase 12 — Consolidate unit tests to the core module
 
 **Goal:** Make `src/lib/waitingList.test.ts` the single home for unit tests —
 remove the thin-wrapper suites and lean on the type system plus the Cypress E2E
@@ -343,58 +338,42 @@ gate for everything else. A one-time cleanup, requested after the original plan.
 
 **Est. size:** ~95 lines removed across two files; 0 added.
 
-**Execution-order note:** numbered 13 by request order, but it should execute
-**right before Phase 12 (README)** so the writeup documents the final,
-consolidated suite rather than one that's about to change — the same
-number-vs-execution split already used for Phase 4 and Phase 11. It has no code
-dependencies and only deletes test files, so it can run any time after Phase 6.
+**Sequencing note:** the last test change before the README (Phase 13), so the
+writeup documents the final, consolidated suite. It only deletes test files, so
+it has no code dependencies and can run any time after Phase 6.
 
-**PR:** `Phase 13: consolidate unit tests to the core module`
+**PR:** `Phase 12: consolidate unit tests to the core module`
 Description covers: which suites were removed and why each is redundant
 (reducer = thin wrapper proven via E2E; validation = component / E2E concern per
 requirements.md), the one-time scope (Phase 10 persistence tests retained), the
 parser-edge trade-off, and confirmation that `bun run test` and the Cypress gate
 stay green.
 
-## Phase 14 — WCAG 2.2 accessibility pass
+## Phase 13 — README and writeup
 
-**Goal:** Bring the whole app to **WCAG 2.2 Level AA** and prove it.
-(`requirements.md` → "Accessibility")
+**Goal:** Submission-ready documentation. The final phase — runs after every
+other phase so the writeup documents the finished app.
 
-**Scope:**
-- Audit every view and control with **axe-core** (`cypress-axe`): the Waiting
-  and Onboarding views, all forms, and the cohort/onboarding lists; fix all
-  serious / critical violations.
-- Concrete fixes across the existing components:
-  - programmatic labels on every input; errors in a `role="alert"` live region
-  - visible focus styles and a logical, keyboard-operable focus order; the
-    view tabs operable by keyboard, with focus never obscured (SC 2.4.11)
-  - interactive targets ≥ 24×24 CSS px (SC 2.5.8)
-  - text-not-colour for the "next to be served" cohort; AA contrast throughout
-    (SC 1.4.3, 1.4.11)
-  - `role="status"` / `aria-live` announcements for total and take updates
-    (SC 4.1.3)
-- **E2E:** add `cypress-axe` checks (`cy.injectAxe` / `cy.checkA11y`) on the
-  main views, asserting no serious/critical violations; runs in the same CI gate.
+**Scope:** `README.md`
+- Run/test instructions
+- Edge cases and how they're handled
+- Business-logic decisions (from requirements.md "Decisions to Document")
+- Performance/structure notes (ledger design, O(1) take)
+- Accessibility notes (WCAG 2.2 AA conformance, how it's verified)
+- AI collaboration section: where AI helped, where it was overridden, one
+  wrong/sloppy AI moment and what was done instead, what was written by
+  hand and why
 
-**Est. size:** ~60 lines of a11y fixes across components + ~40 lines E2E (plus
-the `cypress-axe` dev dependency).
+**Est. size:** ~120 lines of prose.
 
-**Execution-order note:** numbered 14 by the append rule, but it should execute
-**after the UI phases exist (6–9)** and **right before the README (Phase 12)** so
-the writeup can state WCAG 2.2 AA conformance — the same number-vs-execution
-split used for Phases 4, 11, and 13.
-
-**PR:** `Phase 14: WCAG 2.2 accessibility pass`
-Description covers: the `cypress-axe` setup, the conformance target (2.2 AA), the
-specific success criteria addressed (including the 2.2 additions 2.5.8 Target
-Size and 2.4.11 Focus Not Obscured), and the new accessibility checks in the gate.
+**PR:** `Phase 13: README and writeup`
+Description covers: summary of the writeup contents and a final checklist
+against the take-home's grading criteria.
 
 ---
 
 ## Future phases
 
-Every change requested after this plan was written gets appended here as
-Phase 15, 16, … with the same structure (goal, scope, est. size, PR), and
-ships as its own PR — always executing **before** the README (Phase 12), which
-stays the last phase to run.
+A change requested after this plan is added as a new phase **immediately before
+the README**, and the README is renumbered to stay last — same structure
+(goal, scope, est. size, PR), shipped as its own PR.
