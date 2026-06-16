@@ -4,7 +4,6 @@
 // owned by CohortList). Keyed by cohort number upstream; the count comes from
 // the core's cohortRange, so this component does no cohort math of its own.
 
-import { memo } from 'react'
 import { cohortRange, type Counters } from '../lib/waitingList'
 
 interface CohortRowProps {
@@ -19,7 +18,7 @@ interface CohortRowProps {
   onToggle: (cohort: number) => void
 }
 
-export const CohortRow = memo(function CohortRow({
+export function CohortRow({
   counters,
   cohort,
   nextToServe,
@@ -59,4 +58,4 @@ export const CohortRow = memo(function CohortRow({
       </span>
     </button>
   )
-})
+}

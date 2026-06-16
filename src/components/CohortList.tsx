@@ -7,7 +7,7 @@
 // reports and reads the ledger by seq range to list a cohort's creators when
 // it's expanded.
 
-import { useCallback, useState } from 'react'
+import { useState } from 'react'
 import {
   cohortCount,
   cohortRange,
@@ -32,11 +32,6 @@ const panelId = (cohort: number) => `cohort-${cohort}-creators`
 export function CohortList({ counters, ledger }: CohortListProps) {
   const [expanded, setExpanded] = useState<number | null>(null)
   const [page, setPage] = useState(0)
-  // Stable identity across all renders — safe to pass to React.memo'd CohortRow.
-  const toggle = useCallback(
-    (cohort: number) => setExpanded((curr) => (curr === cohort ? null : cohort)),
-    [],
-  )
   const newest = newestCohort(counters)
   const oldest = oldestCohort(counters)
 
@@ -52,6 +47,8 @@ export function CohortList({ counters, ledger }: CohortListProps) {
       </section>
     )
   }
+
+  const toggle = (cohort: number) => setExpanded((curr) => (curr === cohort ? null : cohort))
 
   const total = cohortCount(counters)
   const pageCount = Math.ceil(total / PAGE_SIZE)
