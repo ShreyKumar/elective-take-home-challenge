@@ -5,9 +5,9 @@
 //
 // This module holds the core operations (create / add / take / total) and the
 // cohort derivations the views read: per-cohort counts, cohort-of-seq, the
-// oldest/newest cohort numbers, and the seq ranges for the waiting, take-
-// preview, and onboarding views. Components and the reducer only call this
-// module; they contain no cohort math of their own.
+// oldest/newest cohort numbers, and the seq ranges for the cohort view and a
+// cohort's creator list. Components and the reducer only call this module; they
+// contain no cohort math of their own.
 
 export type Area = 'Design' | 'Development' | 'Marketing' | 'Music' | 'Writing'
 
@@ -184,12 +184,4 @@ export function cohortCounts(counters: Counters): number[] {
     result.push(to - from)
   }
   return result
-}
-
-/**
- * The seq range of every creator taken so far, in served order — the
- * Onboarding view's data. Everything below `head`: `[0, head)`.
- */
-export function onboardingRange(counters: Counters): Range {
-  return { from: 0, to: counters.head }
 }
