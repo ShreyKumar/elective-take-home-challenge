@@ -15,7 +15,7 @@ interface CohortRowProps {
   expanded: boolean
   /** id of the disclosure panel this row controls, for aria-controls. */
   panelId: string
-  onToggle: () => void
+  onToggle: (cohort: number) => void
 }
 
 export function CohortRow({
@@ -37,7 +37,7 @@ export function CohortRow({
       data-cohort={cohort}
       aria-expanded={expanded}
       aria-controls={expanded ? panelId : undefined}
-      onClick={onToggle}
+      onClick={() => onToggle(cohort)}
       className={`flex min-w-24 flex-col items-center gap-0.5 rounded border px-4 py-3 text-center ${
         nextToServe ? 'border-amber-400 bg-amber-50' : 'border-gray-300 bg-white'
       }`}
