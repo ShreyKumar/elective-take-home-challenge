@@ -84,8 +84,6 @@ A simple page wrapping the system:
   creators from the waiting list, **oldest first** (FIFO); taking more than the
   total takes everything. The take applies directly — there is no confirmation
   step.
-- An **Onboarding view** — a second view (e.g. a tab) listing all creators
-  taken so far. Taken creators move from the waiting list into this view.
 - A visualization of the current cohort state (the `[6, 10]`-style list,
   newest left / oldest right) and the total waiting.
 - Visual polish is explicitly **not graded** — it just needs to work and be
@@ -97,9 +95,8 @@ A simple page wrapping the system:
 The app must conform to **WCAG 2.2 Level AA**. Concretely:
 
 - **Structure & semantics** — one `main` landmark and a page `h1`; each control
-  group and view is a labelled region (`section` + `aria-label`/
-  `aria-labelledby`). The two views (Waiting / Onboarding) form a proper tab
-  interface.
+  group and the waiting-list view is a labelled region (`section` +
+  `aria-label`/`aria-labelledby`).
 - **Forms** — every control has a programmatic label; validation errors are
   exposed via a live region (`role="alert"`) so they are announced.
 - **Keyboard** — every interaction is operable by keyboard, with a visible focus
@@ -157,9 +154,9 @@ has 2 creators (still filling), cohort 2 is full, cohort 1 has 2 left (next
 to be served). When `head` crosses a cohort boundary, that cohort simply
 stops existing — no cleanup code needed.
 
-The records to the left of `head` are not garbage: they are the
-**Onboarding view's** data — everyone taken so far, in the order they were
-served. One ledger backs both views; `head` is the boundary between them.
+The records to the left of `head` are not removed by a take — taking only
+advances `head`, which is why it's O(1). They stay in the ledger as served
+history; `head` is simply the boundary between served and waiting.
 
 ### Costs
 
@@ -178,7 +175,8 @@ an invalid area can't compile.
 All waiting-list logic lives in one plain TypeScript module (e.g.
 `src/lib/waitingList.ts`) with **no React imports** — pure functions over
 the counters and the ledger: create, add, take, total, plus the derivations
-(cohort counts, cohort-of-seq, slice ranges for each view). React
+(cohort counts, cohort-of-seq, slice ranges for the cohort view and take
+preview). React
 components and the reducer only *call* this module; they contain no cohort
 math of their own. If a piece of logic needs a component to test it, it's
 in the wrong file.
@@ -206,7 +204,7 @@ phase that adds or changes logic. Required coverage:
   emptied (rejecting invalid input is a component concern, not the module's —
   see below)
 - The derivations: total, per-cohort counts, oldest/newest cohort numbers,
-  and the slice ranges used by the take preview and the onboarding view
+  and the slice ranges used by the take preview and the cohort view
 - A large-input **correctness** check (e.g. add 100k, take 99k, plus
   interleaved batches) confirming the counters stay correct at scale. This
   proves correctness, not speed — the core operations are O(1)/O(m) by
@@ -223,9 +221,8 @@ proven at the component level rather than in the module:
 - **Performance** — the core operations are O(1)/O(m) by construction, so the
   thing actually worth proving is that the *components* stay responsive with
   large inputs: a large cohort list renders in constant DOM (the collapsed
-  "×N full" middle), the onboarding view stays windowed, and a big batch add
-  doesn't block the UI. These performance checks run at the React-component /
-  E2E level, never against the core module.
+  "×N full" middle) and a big batch add doesn't block the UI. These performance
+  checks run at the React-component / E2E level, never against the core module.
 
 The cohort/ledger edge-case behavior is still proven in the module tests,
 once, not re-proven through the UI.
@@ -238,8 +235,8 @@ built app:
 - Create a list, add creators (single and batch), see the cohort view and
   total update
 - The spec's example flow end to end through the UI
-- Take flow: take creators directly; they appear in the Onboarding view and
-  leave the waiting list, with the total updated
+- Take flow: take creators directly; they leave the waiting list, the cohort
+  view updates, and the total drops
 - Edge cases at the UI level: invalid capacity, empty name, take when
   empty (button disabled), take more than total
 - Persistence: add and take, reload the page, verify the state survived
@@ -260,13 +257,11 @@ actions:
 
 - **Reset** — new empty list with the given capacity
 - **Add** — a batch of creators (one dispatch no matter the batch size)
-- **Take** — a count; remembers which seq range was taken so the UI can
-  highlight the newly admitted creators
+- **Take** — a count; advances `head` by the (clamped) count
 
-The reducer state is just the small numbers (`head`, `next`, `capacity`,
-last-taken range), so every update is cheap. The ledger itself sits in a
-stable buffer next to the reducer — safe to share because records are never
-changed after they're added.
+The reducer state is just the small numbers (`head`, `next`, `capacity`), so
+every update is cheap. The ledger itself sits in a stable buffer next to the
+reducer — safe to share because records are never changed after they're added.
 
 ## Components
 
@@ -284,9 +279,6 @@ this size.
 - **CohortList** — shows the newest cohort, one collapsed "10 ×N full" chip
   for the middle, and the oldest cohort (marked "next to be served"). A
   cohort can be expanded to list its creators.
-- **OnboardingView** — the second view (tab): all creators taken so far, in
-  served order, with the most recent take highlighted. Paginated/windowed,
-  since it grows without bound.
 
 React keys come from seq / cohort numbers (stable forever), never array
 indexes.
@@ -321,14 +313,14 @@ How writes work:
 
 - **Add** → put the new creator records + the meta record (one transaction)
 - **Take** → put just the meta record (O(1) — creator records aren't
-  touched; they stay where they are and simply fall on the onboarded side
+  touched; they stay where they are and simply fall on the served side
   of `head`)
-- Records below `head` are **kept** — they back the Onboarding view. They
-  are only removed by a reset.
-- **Reset** → clear both stores (waiting list *and* onboarding history)
+- Records below `head` are not deleted by a take (take only moves `head`,
+  keeping it O(1)); they linger in the store and are cleared only by a reset.
+- **Reset** → clear both stores (all creator records and meta)
 
-On startup, read meta, load creators from `0` to `next − 1`, and show a
-brief loading state. If IndexedDB is unavailable (e.g. private browsing),
+On startup, read meta, load the waiting creators from `head` to `next − 1`, and
+show a brief loading state. If IndexedDB is unavailable (e.g. private browsing),
 run in-memory and tell the user changes won't survive a reload. If the
 stored data is corrupt or from an old schema version, discard it and start
 empty.
