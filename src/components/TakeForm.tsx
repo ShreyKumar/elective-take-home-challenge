@@ -1,7 +1,6 @@
-// Take up to N creators, oldest first. This phase takes directly on submit; in
-// Phase 8 the button instead opens a confirmation modal and the actual take
-// moves there. Disabled when the list is empty. A count larger than the total
-// is allowed — the core clamps it to what's waiting.
+// Take up to N creators, oldest first. Takes directly on submit (one step, no
+// confirmation modal); disabled when the list is empty. A count larger than the
+// total is allowed — the core clamps it to what's waiting.
 
 import { useState, type FormEvent } from 'react'
 import { parseCount } from './validation'

@@ -22,6 +22,13 @@ other in order; the app is runnable after every phase.
   phases write, it has been re-sequenced into its logical execution slot as
   Phase 4 (this renumbered the old phases 4–10 to 5–11). This is a one-time
   reorganization, recorded here; the append rule otherwise still holds.
+- **Documented change — take modal removed, accessibility added.** The Take
+  confirmation modal (originally Phase 8) was removed at the user's request:
+  taking is now a direct one-step action. Phase 8 is kept below as a tombstone
+  rather than renumbered, so Phases 9–13 keep their numbers, and a new
+  **Phase 14 — WCAG 2.2 accessibility pass** is appended per the append rule.
+  The app must conform to **WCAG 2.2 Level AA** throughout (see `requirements.md`
+  → "Accessibility"); the remaining UI phase (Onboarding) builds to that bar.
 - Each PR description states: what changed, why (linking the relevant
   requirements section), the decisions made, and how it was verified.
 - **Both test suites evolve with every phase.** Tests are never a separate
@@ -140,18 +147,17 @@ a sample failing run proving the gate blocks.
 **Est. size:** ~80 lines + ~40 lines tests.
 
 **PR:** `Phase 5: reducer and app state`
-Description covers: why state is scalars only, one-dispatch-per-batch,
-why the modal needs no action of its own.
+Description covers: why state is scalars only, one-dispatch-per-batch, and why
+the ledger lives in a stable buffer beside the reducer rather than in state.
 
 ## Phase 6 — Forms and summary UI
 
-**Goal:** Interactive create / add / take (no modal yet), with totals.
+**Goal:** Interactive create / add / take, with totals.
 
 **Scope:** `src/components/`
 - `CreateForm` (capacity, default 10, positive-integer validation)
 - `AddForm` (name + area dropdown, batch queue, blocks empty names)
-- `TakeForm` (number input; direct take this phase, modal comes in
-  Phase 8)
+- `TakeForm` (number input; direct one-step take)
 - `Summary` (total waiting, cohort count)
 - Tailwind layout for the page
 - **Unit tests, same PR:** form validation helpers (capacity, name, count
@@ -163,7 +169,7 @@ why the modal needs no action of its own.
 
 **PR:** `Phase 6: create/add/take forms and summary`
 Description covers: validation behavior per form, batch-add UX choice,
-known temporary state (take without confirmation), new E2E coverage.
+direct one-step take, new E2E coverage.
 
 ## Phase 7 — Cohort visualization
 
@@ -186,25 +192,17 @@ Description covers: why the middle collapses to one chip (constant DOM),
 key stability, how expansion reads the ledger, spec flow now asserted
 end to end.
 
-## Phase 8 — Take confirmation modal
+## Phase 8 — Take confirmation modal *(removed)*
 
-**Goal:** Two-step take. (`requirements.md` → "Web Component",
-`TakeConfirmModal`)
+**Removed at the user's request.** Taking is a direct one-step action with no
+confirmation modal — pressing Take removes up to N oldest creators immediately
+(see `requirements.md` → "Web Component", "Edge Cases"). No `TakeConfirmModal`
+component ships, and the Phase 6/7 take tests stay as direct takes.
 
-**Scope:**
-- `TakeConfirmModal`: previews who would be taken (oldest first, "+k more"
-  cap), Confirm dispatches, Cancel closes with no state change
-- `TakeForm` switches from direct take to opening the modal
-- **E2E:** modal preview lists the oldest creators; confirm removes them;
-  cancel leaves the list untouched; take button disabled when empty;
-  taking more than total previews only what's there. Update Phase 6/7
-  take tests to go through the modal.
-
-**Est. size:** ~100 lines + ~60 lines E2E (including updated older tests).
-
-**PR:** `Phase 8: take confirmation modal`
-Description covers: preview as a pure read at `head`, cancel as a no-op,
-the display cap for huge takes, which existing E2E tests changed and why.
+The phase number is kept here as a **tombstone** so the later phase numbers are
+unchanged (no renumber); see the documented change in the process rules. The
+accessibility work this UI would have needed is folded into the WCAG 2.2 pass
+(**Phase 14**).
 
 ## Phase 9 — Onboarding view
 
@@ -348,10 +346,44 @@ requirements.md), the one-time scope (Phase 10 persistence tests retained), the
 parser-edge trade-off, and confirmation that `bun run test` and the Cypress gate
 stay green.
 
+## Phase 14 — WCAG 2.2 accessibility pass
+
+**Goal:** Bring the whole app to **WCAG 2.2 Level AA** and prove it.
+(`requirements.md` → "Accessibility")
+
+**Scope:**
+- Audit every view and control with **axe-core** (`cypress-axe`): the Waiting
+  and Onboarding views, all forms, and the cohort/onboarding lists; fix all
+  serious / critical violations.
+- Concrete fixes across the existing components:
+  - programmatic labels on every input; errors in a `role="alert"` live region
+  - visible focus styles and a logical, keyboard-operable focus order; the
+    view tabs operable by keyboard, with focus never obscured (SC 2.4.11)
+  - interactive targets ≥ 24×24 CSS px (SC 2.5.8)
+  - text-not-colour for the "next to be served" cohort; AA contrast throughout
+    (SC 1.4.3, 1.4.11)
+  - `role="status"` / `aria-live` announcements for total and take updates
+    (SC 4.1.3)
+- **E2E:** add `cypress-axe` checks (`cy.injectAxe` / `cy.checkA11y`) on the
+  main views, asserting no serious/critical violations; runs in the same CI gate.
+
+**Est. size:** ~60 lines of a11y fixes across components + ~40 lines E2E (plus
+the `cypress-axe` dev dependency).
+
+**Execution-order note:** numbered 14 by the append rule, but it should execute
+**after the UI phases exist (6–9)** and **right before the README (Phase 12)** so
+the writeup can state WCAG 2.2 AA conformance — the same number-vs-execution
+split used for Phases 4, 11, and 13.
+
+**PR:** `Phase 14: WCAG 2.2 accessibility pass`
+Description covers: the `cypress-axe` setup, the conformance target (2.2 AA), the
+specific success criteria addressed (including the 2.2 additions 2.5.8 Target
+Size and 2.4.11 Focus Not Obscured), and the new accessibility checks in the gate.
+
 ---
 
 ## Future phases
 
 Every change requested after this plan was written gets appended here as
-Phase 14, 15, … with the same structure (goal, scope, est. size, PR), and
+Phase 15, 16, … with the same structure (goal, scope, est. size, PR), and
 ships as its own PR.
