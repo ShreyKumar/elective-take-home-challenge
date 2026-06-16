@@ -29,11 +29,12 @@ other in order; the app is runnable after every phase.
   reorganization, recorded here; the append rule otherwise still holds.
 - **Documented change — take modal removed, accessibility added.** The Take
   confirmation modal (originally Phase 8) was removed at the user's request:
-  taking is now a direct one-step action. Phase 8 is kept below as a tombstone
-  rather than renumbered, so Phases 9–13 keep their numbers, and a new
-  **Phase 14 — WCAG 2.2 accessibility pass** is appended per the append rule.
-  The app must conform to **WCAG 2.2 Level AA** throughout (see `requirements.md`
-  → "Accessibility"); the remaining UI phase (Onboarding) builds to that bar.
+  taking is now a direct one-step action. Phase 8 has been removed **entirely**
+  — its section is gone (no tombstone). Phases 9–14 keep their numbers, leaving a
+  deliberate gap at 8, and a new **Phase 14 — WCAG 2.2 accessibility pass** is
+  appended per the append rule. The app must conform to **WCAG 2.2 Level AA**
+  throughout (see `requirements.md` → "Accessibility"); the remaining UI phase
+  (Onboarding) builds to that bar.
 - Each PR description states: what changed, why (linking the relevant
   requirements section), the decisions made, and how it was verified.
 - **Both test suites evolve with every phase.** Tests are never a separate
@@ -196,18 +197,6 @@ CohortList)
 Description covers: why the middle collapses to one chip (constant DOM),
 key stability, how expansion reads the ledger, spec flow now asserted
 end to end.
-
-## Phase 8 — Take confirmation modal *(removed)*
-
-**Removed at the user's request.** Taking is a direct one-step action with no
-confirmation modal — pressing Take removes up to N oldest creators immediately
-(see `requirements.md` → "Web Component", "Edge Cases"). No `TakeConfirmModal`
-component ships, and the Phase 6/7 take tests stay as direct takes.
-
-The phase number is kept here as a **tombstone** so the later phase numbers are
-unchanged (no renumber); see the documented change in the process rules. The
-accessibility work this UI would have needed is folded into the WCAG 2.2 pass
-(**Phase 14**).
 
 ## Phase 9 — Onboarding view
 
