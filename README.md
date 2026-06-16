@@ -180,24 +180,43 @@ AI-drafted from the spec and then reviewed. Many of the "why" comments were a
 back-and-forth: I would flag a non-obvious line and ask for the reasoning to be
 written down next to it.
 
-**Where I overrode it — the Core Web Vitals episode.** Asked to "prove performance,"
-Claude added a _Core Web Vitals budgets_ block to the E2E suite — LCP and CLS
-measured live via `PerformanceObserver` (commit `45c90af`). To make the CLS assertion
-pass, it then wrapped `CohortRow` in `React.memo` and the toggle in `useCallback`
-(`d774cc6`). Both moves were wrong, and both were reversed:
+**Where I overrode it — the model's bias toward over-building.** The most consistent
+thing I did at review was *remove* machinery Claude added that the problem didn't need.
+It happened three times, in three different layers — each visible in the PR history as
+a `claude[bot]` follow-up to a review comment:
 
-1. **The premature memoization went first.** `React.memo` / `useCallback` were not
-   needed by any _failing_ test — they existed only to satisfy a flaky metric — so
-   they were removed (`d2ad5d9`). Optimization should answer a real measurement, not
-   a test we just invented.
-2. **Then the metric itself went.** A dedup audit (`93c5628`) cut the whole CWV
-   block: the LCP check was near-tautological (its zero-fallback could never fail),
-   and the CLS / layout-jank check was outside the spec. The spec's real performance
-   requirement — _constant DOM no matter how many cohorts exist_ — is a structural
-   property, so it is asserted structurally: the four windowing tests pin the rendered
-   row count at `PAGE_SIZE` through paging and takes. That matches the decision
-   recorded in `plan.md` ("structural DOM-bound assertions, not wall-clock timing").
-   Timing in CI is flaky and proves the wrong thing.
+1. **A batch-queue `AddForm` (PR #7).** Claude first built a two-phase add — a local
+   staging "queue" with an `addAll` commit button — so several creators could be
+   batched into one dispatch. The core genuinely supports batch adds (`add` takes an
+   array), but the *form* didn't need a staging area to use it. I asked what `addAll`
+   bought us, then had the whole queue removed (`83ceac4`); the form now submits one
+   creator at a time and still calls the same array-shaped core.
+2. **A collapsed "middle" in the cohort view (PR #9).** To keep the DOM bounded,
+   Claude rendered only the two end cohorts and squashed the always-full middle into
+   a single non-interactive `capacity ×N full · collapsed` chip. That was a _lossy_
+   shortcut: the middle cohorts weren't expandable at all, so their creators were
+   unreachable. I rejected it — "a regular view will do" (`79682bc`) — and the proper
+   fix landed the next phase: **windowing** the rows to a bounded page (`532fb45`),
+   which honours the same constant-DOM constraint without hiding a single cohort.
+   Rejecting the clever-but-lossy version is what made room for the clean one.
+3. **Core Web Vitals budgets + premature memoization (PR #15).** Asked whether we
+   could prove the app stays fast, Claude added an LCP/CLS block to the E2E suite
+   measured live via `PerformanceObserver` (`45c90af`), then — to make the flaky CLS
+   assertion pass — wrapped `CohortRow` in `React.memo` and the toggle in `useCallback`
+   (`d774cc6`). Both were wrong and both came out: the memoization first (it answered a
+   test we'd just invented, not a real measurement — `d2ad5d9`), then the metric itself
+   in a dedup audit (`93c5628`). The LCP check was near-tautological (its zero-fallback
+   could never fail) and the CLS check was outside the spec; the real performance
+   requirement — _constant DOM no matter how many cohorts exist_ — is structural, so it
+   is asserted structurally by the windowing tests, matching the decision recorded in
+   `plan.md` ("structural DOM-bound assertions, not wall-clock timing"). Timing in CI is
+   flaky and proves the wrong thing.
+
+The through-line: the model optimises hard for whatever target it's handed and reaches
+for more abstraction than the problem needs — a staging queue, a summary chip, a live
+metric. None of it was _wrong_ code; it was the wrong _amount_ of code. The review loop
+was there to keep taking it back out, with the spec as the yardstick for how much is
+enough.
 
 **What I decided by hand and why:** the load-bearing choices were mine — the ledger
 model (the `floor(seq / capacity)` insight that makes take O(1) and empty-cohort
@@ -209,6 +228,8 @@ One note on attribution: GitHub shows my account as the PR _opener_ and merger
 because that is the credential the `gh` CLI uses, even though the commits are authored
 as Claude Code. The author/committer split in `git log` is the accurate record of who
 wrote versus who reviewed.
+
+![](docs/pr-comment.png "Code Reviewing Claude")
 
 # Further improvements
 
