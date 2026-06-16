@@ -80,17 +80,43 @@ A simple page wrapping the system:
 - Create/reset the waiting list with a capacity input (default 10).
 - An **Add creators** control: name input, **area dropdown** (5 options),
   and a way to add one or more creators in a single action.
-- A **Take N** control (numeric input + button). Taking is a two-step flow:
-  the button opens a **confirmation modal** listing the creators who would
-  be taken (name + area, oldest first); confirming removes them from the
-  waiting list, cancelling changes nothing.
+- A **Take N** control (numeric input + button). Pressing it takes up to N
+  creators from the waiting list, **oldest first** (FIFO); taking more than the
+  total takes everything. The take applies directly — there is no confirmation
+  step.
 - An **Onboarding view** — a second view (e.g. a tab) listing all creators
-  taken so far. Confirmed creators move from the waiting list into this
-  view.
+  taken so far. Taken creators move from the waiting list into this view.
 - A visualization of the current cohort state (the `[6, 10]`-style list,
   newest left / oldest right) and the total waiting.
-- Look and feel are explicitly **not graded** — it just needs to work and be
-  sensible. No visual polish required.
+- Visual polish is explicitly **not graded** — it just needs to work and be
+  sensible. **Accessibility is required, though:** the app must conform to
+  WCAG 2.2 (see "Accessibility" below).
+
+## Accessibility (WCAG 2.2)
+
+The app must conform to **WCAG 2.2 Level AA**. Concretely:
+
+- **Structure & semantics** — one `main` landmark and a page `h1`; each control
+  group and view is a labelled region (`section` + `aria-label`/
+  `aria-labelledby`). The two views (Waiting / Onboarding) form a proper tab
+  interface.
+- **Forms** — every control has a programmatic label; validation errors are
+  exposed via a live region (`role="alert"`) so they are announced.
+- **Keyboard** — every interaction is operable by keyboard, with a visible focus
+  indicator, a logical focus order, and no keyboard traps (SC 2.1.1, 2.4.7).
+  Newly revealed content does not hide the focused element (SC 2.4.11 Focus Not
+  Obscured — new in 2.2).
+- **Targets** — interactive targets are at least 24×24 CSS px (SC 2.5.8 Target
+  Size (Minimum) — new in 2.2).
+- **Colour & contrast** — information is never conveyed by colour alone (e.g.
+  the "next to be served" cohort is labelled in text, not only tinted); text and
+  UI components meet the AA contrast minimums (SC 1.4.3, 1.4.11).
+- **Status messages** — total/count changes after add and take are announced to
+  assistive tech without moving focus (SC 4.1.3 Status Messages).
+
+Conformance is checked automatically in the E2E suite (axe-core via
+`cypress-axe`) inside the same CI gate; the dedicated accessibility pass is a
+numbered phase in `plan.md`.
 
 ## How It Works: the Ledger
 
@@ -180,7 +206,7 @@ phase that adds or changes logic. Required coverage:
   emptied (rejecting invalid input is a component concern, not the module's —
   see below)
 - The derivations: total, per-cohort counts, oldest/newest cohort numbers,
-  and the slice ranges used by the modal and the onboarding view
+  and the slice ranges used by the take preview and the onboarding view
 - A large-input **correctness** check (e.g. add 100k, take 99k, plus
   interleaved batches) confirming the counters stay correct at scale. This
   proves correctness, not speed — the core operations are O(1)/O(m) by
@@ -212,8 +238,8 @@ built app:
 - Create a list, add creators (single and batch), see the cohort view and
   total update
 - The spec's example flow end to end through the UI
-- Take flow: open the confirmation modal, verify the preview, confirm, see
-  creators appear in the Onboarding view; cancel and verify nothing changed
+- Take flow: take creators directly; they appear in the Onboarding view and
+  leave the waiting list, with the total updated
 - Edge cases at the UI level: invalid capacity, empty name, take when
   empty (button disabled), take more than total
 - Persistence: add and take, reload the page, verify the state survived
@@ -237,10 +263,6 @@ actions:
 - **Take** — a count; remembers which seq range was taken so the UI can
   highlight the newly admitted creators
 
-The confirmation modal needs no action of its own: previewing "who would be
-taken" is a pure read of the ledger range starting at `head` — nothing is
-dispatched until the user confirms.
-
 The reducer state is just the small numbers (`head`, `next`, `capacity`,
 last-taken range), so every update is cheap. The ledger itself sits in a
 stable buffer next to the reducer — safe to share because records are never
@@ -257,11 +279,7 @@ this size.
 - **AddForm** — name input + area dropdown; can queue several creators and
   submit them as one batch; blocks empty names
 - **TakeForm** — number input + take button; disabled when the list is
-  empty. The button opens the confirmation modal rather than taking
-  directly.
-- **TakeConfirmModal** — lists the creators who would be taken (oldest
-  first, capped with a "+k more" line for huge takes), with Confirm and
-  Cancel. Confirm dispatches Take; Cancel just closes.
+  empty. Takes up to N oldest creators directly (no confirmation step).
 - **Summary** — total waiting and cohort count
 - **CohortList** — shows the newest cohort, one collapsed "10 ×N full" chip
   for the middle, and the oldest cohort (marked "next to be served"). A
@@ -318,9 +336,8 @@ empty.
 ## Edge Cases
 
 - `add(0)` / `take(0)` — no-ops
-- Take more than the total, or take from an empty list — the modal previews
-  (and a confirm takes) only what's actually there
-- Cancelling the confirmation modal — no state change at all
+- Take more than the total, or take from an empty list — takes only what's
+  actually there (the list may become `[]`)
 - Capacity of 1
 - Emptied cohorts disappear (free, via the head-crosses-boundary math)
 - Negative / non-integer / non-numeric input — rejected in the React
@@ -333,10 +350,12 @@ empty.
 
 - `take(n)` returns the taken creators (via seq range), not just a count
 - Taking more than available is a success, not an error
+- Taking is a single-step action — no confirmation modal
 - Invalid form input is rejected (not silently clamped)
 - Input validation lives only in the React components; the core module trusts
   its inputs and carries no defensive guards
 - Capacity is fixed at creation — reset to change it
+- The app targets WCAG 2.2 Level AA (see "Accessibility")
 
 ## Out of Scope
 

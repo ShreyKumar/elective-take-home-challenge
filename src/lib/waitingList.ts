@@ -98,9 +98,9 @@ export function add(counters: Counters, inputs: readonly CreatorInput[]): AddRes
 
 /**
  * The seq range the next `take(n)` would remove — the `n` oldest waiting
- * creators — without mutating anything. This is the confirmation modal's
- * preview: a pure read at `head`. Taking more than the total previews only
- * what's there. Rejects negative / non-integer counts.
+ * creators — without mutating anything: a pure read at `head` that `take` reuses
+ * to compute its range. Taking more than the total previews only what's there.
+ * Rejects negative / non-integer counts.
  */
 export function previewRange(counters: Counters, n: number): Range {
   assertInt(n, 'take count', 0)

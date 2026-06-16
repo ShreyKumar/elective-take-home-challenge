@@ -1,7 +1,7 @@
-// E2E for the Phase 6 forms: create/reset, add, direct take,
-// and the two UI-level rejections (invalid capacity, empty name). The cohort
-// visualization and the take confirmation modal arrive in later phases; here we
-// assert the summary numbers (total waiting + cohort count) and the rejections.
+// E2E for the Phase 6 forms: create/reset, add, direct take, and the two
+// UI-level rejections (invalid capacity, empty name). The cohort visualization
+// has its own spec (cohorts.cy.ts); here we assert the summary numbers (total
+// waiting + cohort count) and the rejections.
 
 /** Add one creator directly via the name + area + "Add creator" flow. */
 function addCreator(name: string, area = 'Design') {
