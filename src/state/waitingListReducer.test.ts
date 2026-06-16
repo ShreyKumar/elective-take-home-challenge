@@ -51,4 +51,11 @@ describe('waitingListReducer', () => {
     const fromEmpty = waitingListReducer(drained, { type: 'take', count: 5 })
     expect(fromEmpty.counters.head).toBe(5)
   })
+
+  it('hydrate replaces the counters wholesale (from persisted state)', () => {
+    const loaded = { capacity: 4, head: 6, next: 14 }
+    expect(
+      waitingListReducer(initWaitingList(10), { type: 'hydrate', counters: loaded }),
+    ).toEqual({ counters: loaded })
+  })
 })
