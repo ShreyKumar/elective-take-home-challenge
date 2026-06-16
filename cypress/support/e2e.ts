@@ -4,7 +4,7 @@
 // test starts from a clean slate. Reload-survival tests use cy.reload(), which
 // keeps IndexedDB intact within a single test.
 
-import 'cypress-axe' // Phase 10: cy.injectAxe / cy.checkA11y for WCAG 2.2 checks
+import 'cypress-axe' // cy.injectAxe / cy.checkA11y for WCAG 2.2 checks
 
 const DB_NAME = 'elective-waiting-list'
 
