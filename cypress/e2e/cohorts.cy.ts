@@ -1,8 +1,8 @@
-// E2E for the Phase 7 cohort visualization (CohortList / CohortRow): the newest
-// cohort, the collapsed "capacity ×N full" middle chip, the oldest cohort marked
-// "next to be served", and expanding a cohort to list its creators. Drives the
-// spec's full example flow through the UI and asserts the cohort view + total at
-// each step, including expansion while head sits mid-cohort after a take.
+// E2E for the Phase 7 cohort visualization (CohortList / CohortRow): all cohorts
+// shown as regular rows, newest on the left, oldest on the right marked "next to
+// be served". Drives the spec's full example flow through the UI and asserts the
+// cohort view + total at each step, including expansion while head sits mid-cohort
+// after a take.
 
 /** Add `count` creators named C{start}..C{start+count-1} through the single-add
  *  form. Seq === arrival order, so names map directly onto cohort seq ranges. */
@@ -31,34 +31,33 @@ describe('cohort visualization', () => {
   it('shows an empty state until creators are added', () => {
     cy.get('[data-cy=cohort-empty]').should('be.visible')
     cy.get('[data-cy=cohort-row]').should('not.exist')
-    cy.get('[data-cy=cohort-middle]').should('not.exist')
   })
 
   it('renders the spec example flow at every step (capacity 10)', () => {
-    // [] + 3 -> [3]: one cohort, marked next to be served, no middle chip.
+    // [] + 3 -> [3]: one cohort, marked next to be served.
     addRange(0, 3)
     cy.get('[data-cy=total]').should('have.text', '3')
     cy.get('[data-cy=cohort-row]').should('have.length', 1)
     expectRow(0, 3)
-    cy.get('[data-cy=cohort-middle]').should('not.exist')
     cy.get('[data-cy=cohort-next]').should('be.visible')
 
-    // [3] + 13 -> [6, 10]: newest 6 (cohort 1, filling), oldest 10 (cohort 0, full), no middle yet.
+    // [3] + 13 -> [6, 10]: newest 6 (cohort 1, filling), oldest 10 (cohort 0, full).
     addRange(3, 13)
     cy.get('[data-cy=total]').should('have.text', '16')
+    cy.get('[data-cy=cohort-row]').should('have.length', 2)
     expectRow(1, 6)
     expectRow(0, 10)
     cy.get('[data-cy=cohort-row][data-cohort="1"]').should('contain.text', 'filling')
     cy.get('[data-cy=cohort-row][data-cohort="0"]').should('contain.text', 'full')
-    cy.get('[data-cy=cohort-middle]').should('not.exist')
 
-    // [6, 10] + 22 -> [8, 10, 10, 10]: newest 8 (cohort 3), middle "10 ×2 full", oldest 10 (cohort 0).
+    // [6, 10] + 22 -> [8, 10, 10, 10]: 4 cohorts all shown as rows.
     addRange(16, 22)
     cy.get('[data-cy=total]').should('have.text', '38')
-    cy.get('[data-cy=cohort-row]').should('have.length', 2) // only the two ends are full rows
+    cy.get('[data-cy=cohort-row]').should('have.length', 4)
     expectRow(3, 8)
+    expectRow(2, 10)
+    expectRow(1, 10)
     expectRow(0, 10)
-    cy.get('[data-cy=cohort-middle]').should('contain.text', '10 ×2 full')
 
     // Expansion reads the ledger: newest cohort 3 holds seqs 30..37 -> C30..C37, area defaults to Design.
     cy.get('[data-cy=cohort-row][data-cohort="3"]').click()
@@ -75,9 +74,9 @@ describe('cohort visualization', () => {
     // take 4 -> [8, 10, 10, 6]: oldest (cohort 0) drops to 6, still next to serve.
     take(4)
     cy.get('[data-cy=total]').should('have.text', '34')
+    cy.get('[data-cy=cohort-row]').should('have.length', 4)
     expectRow(3, 8)
     expectRow(0, 6)
-    cy.get('[data-cy=cohort-middle]').should('contain.text', '10 ×2 full')
 
     // Expand the oldest cohort while head=4 sits mid-cohort 0: the head-clamp in
     // cohortRange must drop the served C0..C3 and list only C4..C9 (seqs 4..9).
@@ -89,13 +88,13 @@ describe('cohort visualization', () => {
       .and('not.contain.text', 'C3') // C3 was taken — must not reappear
     cy.get('[data-cy=cohort-row][data-cohort="0"]').click() // collapse
 
-    // take 7 -> [8, 10, 9]: cohort 0 drained away, oldest is now cohort 1 (count 9), middle "10 ×1 full".
+    // take 7 -> [8, 10, 9]: cohort 0 drained away, oldest is now cohort 1 (count 9).
     take(7)
     cy.get('[data-cy=total]').should('have.text', '27')
+    cy.get('[data-cy=cohort-row]').should('have.length', 3)
     expectRow(3, 8)
     expectRow(1, 9)
     cy.get('[data-cy=cohort-row][data-cohort="0"]').should('not.exist') // emptied cohort is gone
-    cy.get('[data-cy=cohort-middle]').should('contain.text', '10 ×1 full')
 
     // Expanding the now-partial oldest cohort 1 hides the served boundary creator:
     // seq 10 (C10) was served; only seqs 11..19 (C11..C19) remain waiting.
@@ -107,12 +106,11 @@ describe('cohort visualization', () => {
       .and('contain.text', 'C19')
     cy.get('[data-cy=cohort-row][data-cohort="1"]').click() // collapse
 
-    // take 20 -> [7]: single cohort 3, no middle, marked next to be served.
+    // take 20 -> [7]: single cohort 3, marked next to be served.
     take(20)
     cy.get('[data-cy=total]').should('have.text', '7')
     cy.get('[data-cy=cohort-row]').should('have.length', 1)
     expectRow(3, 7)
-    cy.get('[data-cy=cohort-middle]').should('not.exist')
     cy.get('[data-cy=cohort-next]').should('be.visible')
   })
 

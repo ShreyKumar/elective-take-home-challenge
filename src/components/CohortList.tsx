@@ -1,11 +1,8 @@
 // The [6, 10]-style cohort visualization: newest cohort on the left, oldest on
-// the right (marked "next to be served"), and the always-full middle collapsed
-// into one "capacity ×N full" chip so the rendered DOM stays bounded no matter
-// how many cohorts exist (requirements.md → Components → CohortList; the
-// constant-DOM property is asserted in Phase 11). Cohorts are derived from the
-// counters by the core module — this component only arranges what the lib
-// reports, and reads the ledger by seq range to list a cohort's creators when
-// it's expanded.
+// the right (marked "next to be served"). All cohorts are shown as regular rows.
+// Cohorts are derived from the counters by the core module — this component only
+// arranges what the lib reports, and reads the ledger by seq range to list a
+// cohort's creators when it's expanded.
 
 import { useState } from 'react'
 import {
@@ -31,13 +28,12 @@ export function CohortList({ counters, ledger }: CohortListProps) {
   const newest = newestCohort(counters)
   const oldest = oldestCohort(counters)
 
-  // Only the two end cohorts are expandable. If the open cohort is no longer an
-  // end — served away, collapsed into the full middle, or cleared by a reset —
-  // drop the stale expansion so it can never silently re-open when that cohort
-  // number reappears as an end. (Adjusting state during render is React's escape
-  // hatch for derived state; the update is conditional and converges to null.)
+  // Drop stale expansion if the cohort no longer exists (served away or reset).
   const openCohort =
-    expanded !== null && (expanded === newest || expanded === oldest) ? expanded : null
+    expanded !== null && newest !== undefined && oldest !== undefined &&
+    expanded >= oldest && expanded <= newest
+      ? expanded
+      : null
   if (expanded !== null && openCohort === null) setExpanded(null)
 
   if (newest === undefined || oldest === undefined) {
@@ -50,10 +46,8 @@ export function CohortList({ counters, ledger }: CohortListProps) {
     )
   }
 
-  // Every cohort strictly between the two ends is full (the always-full-middle
-  // invariant) and collapses into a single chip.
-  const middleCount = cohortCount(counters) - 2
-  const single = newest === oldest
+  const count = cohortCount(counters)
+  const cohorts = Array.from({ length: count }, (_, i) => newest - i)
   const toggle = (cohort: number) =>
     setExpanded((current) => (current === cohort ? null : cohort))
 
@@ -61,35 +55,17 @@ export function CohortList({ counters, ledger }: CohortListProps) {
     <section aria-label="Cohorts" data-cy="cohort-list" className="space-y-3">
       {/* newest on the left, oldest on the right */}
       <div className="flex flex-wrap items-start gap-2">
-        <CohortRow
-          counters={counters}
-          cohort={newest}
-          nextToServe={single}
-          expanded={openCohort === newest}
-          panelId={panelId(newest)}
-          onToggle={() => toggle(newest)}
-        />
-        {middleCount > 0 && (
-          <div
-            data-cy="cohort-middle"
-            className="flex min-w-24 flex-col items-center justify-center gap-0.5 rounded border border-dashed border-gray-300 bg-gray-50 px-4 py-3 text-center"
-          >
-            <span className="text-sm font-medium text-gray-700">
-              {counters.capacity} ×{middleCount} full
-            </span>
-            <span className="text-xs text-gray-400">collapsed</span>
-          </div>
-        )}
-        {!single && (
+        {cohorts.map((cohort) => (
           <CohortRow
+            key={cohort}
             counters={counters}
-            cohort={oldest}
-            nextToServe
-            expanded={openCohort === oldest}
-            panelId={panelId(oldest)}
-            onToggle={() => toggle(oldest)}
+            cohort={cohort}
+            nextToServe={cohort === oldest}
+            expanded={openCohort === cohort}
+            panelId={panelId(cohort)}
+            onToggle={() => toggle(cohort)}
           />
-        )}
+        ))}
       </div>
 
       {openCohort !== null && (
