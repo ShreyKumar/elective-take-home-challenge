@@ -9,7 +9,6 @@ import {
   create,
   newestCohort,
   oldestCohort,
-  onboardingRange,
   previewRange,
   take,
   total,
@@ -318,22 +317,6 @@ describe('previewRange (take preview)', () => {
   })
 })
 
-describe('onboardingRange (served history)', () => {
-  // Everything below head, [0, head): empty until something is taken, and it only
-  // ever grows — adding creators never changes what has already been served.
-  it('covers [0, head) and grows only on take', () => {
-    expect(onboardingRange(create(10))).toEqual({ from: 0, to: 0 })
-    let c = add(create(10), inputs(5)).counters
-    expect(onboardingRange(c)).toEqual({ from: 0, to: 0 }) // nothing taken yet
-    c = take(c, 3).counters
-    expect(onboardingRange(c)).toEqual({ from: 0, to: 3 }) // 3 served
-    c = add(c, inputs(4)).counters // adding does not change served history
-    expect(onboardingRange(c)).toEqual({ from: 0, to: 3 })
-    c = take(c, 2).counters // head=5
-    expect(onboardingRange(c)).toEqual({ from: 0, to: 5 })
-  })
-})
-
 describe('immutability', () => {
   // The reducer/stable-buffer design depends on the counters never being mutated
   // in place. Reads and operations must leave their input object untouched.
@@ -345,7 +328,6 @@ describe('immutability', () => {
     previewRange(c, 4)
     cohortCounts(c)
     cohortRange(c, 0)
-    onboardingRange(c)
     expect(c).toEqual(snapshot)
   })
 })
