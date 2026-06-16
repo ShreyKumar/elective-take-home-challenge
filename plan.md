@@ -42,10 +42,13 @@ other in order; the app is runnable after every phase.
   - **The Take confirmation modal was removed entirely** — taking is a direct
     one-step action (see `requirements.md` → "Web Component", "Edge Cases"); no
     `TakeConfirmModal` ships.
+  - **The Onboarding view was removed entirely** — there is no second view of
+    taken creators; taking just removes them from the waiting list (see
+    `requirements.md` → "Web Component", "Components"). No `OnboardingView` ships.
   - **The app must conform to WCAG 2.2 Level AA** throughout (see
-    `requirements.md` → "Accessibility"); see Phase 11.
-  - **The phases were then renumbered into execution order** so the numbers match
-    the order of work and the README is last.
+    `requirements.md` → "Accessibility"); see Phase 10.
+  - **The phases were renumbered into execution order** (after each of the above)
+    so the numbers match the order of work and the README is last.
 
 ---
 
@@ -96,7 +99,7 @@ Edge Cases section.
 
 **Scope:** `src/lib/waitingList.ts` (extended) + tests
 - Derivations: cohort-of-seq, oldest/newest cohort, per-cohort counts,
-  slice ranges for waiting view / take preview / onboarding view
+  slice ranges for the waiting / cohort views and the take preview
 - **Unit tests, same PR:** counts and ranges across boundaries, emptied
   cohorts disappearing as `head` crosses a boundary, the `[2, 4, 2]`
   picture from requirements.md reproduced as assertions
@@ -104,8 +107,8 @@ Edge Cases section.
 **Est. size:** ~50 lines module + ~80 lines tests.
 
 **PR:** `Phase 3: cohort derivations with unit tests`
-Description covers: why cohorts are derived not stored, how each view
-maps to a slice range, boundary-crossing test cases.
+Description covers: why cohorts are derived not stored, how the cohort view
+and take preview map to slice ranges, boundary-crossing test cases.
 
 ## Phase 4 — Cypress setup and CI gate
 
@@ -141,12 +144,11 @@ a sample failing run proving the gate blocks.
 "React State")
 
 **Scope:** `src/state/`
-- Reducer with `reset` / `add` / `take` actions over the counters +
-  last-taken range
+- Reducer with `reset` / `add` / `take` actions over the counters
+  (`head`, `next`, `capacity`)
 - Ledger held in a stable buffer alongside the reducer
 - Root `App` renders raw state (counters + total) to prove wiring
-- **Unit tests, same PR:** reducer actions (reset/add/take) including
-  last-taken range bookkeeping
+- **Unit tests, same PR:** reducer actions (reset/add/take) over the counters
 
 **Est. size:** ~80 lines + ~40 lines tests.
 
@@ -196,27 +198,7 @@ Description covers: why the middle collapses to one chip (constant DOM),
 key stability, how expansion reads the ledger, spec flow now asserted
 end to end.
 
-## Phase 8 — Onboarding view
-
-**Goal:** Second view for taken creators. (`requirements.md` →
-`OnboardingView`)
-
-**Scope:**
-- Tab navigation between Waiting list and Onboarding views
-- `OnboardingView`: all creators below `head` in served order, paginated/
-  windowed, most recent take highlighted via the last-taken range
-- **E2E:** taken creators appear in the Onboarding view in served order with
-  the latest take highlighted; waiting view no longer shows them; tab switching
-  preserves both views
-
-**Est. size:** ~120 lines + ~40 lines E2E.
-
-**PR:** `Phase 8: onboarding view`
-Description covers: one ledger backing both views (`head` as the
-boundary), why served order is free, pagination approach, new E2E
-coverage.
-
-## Phase 9 — Component performance tests
+## Phase 8 — Component performance tests
 
 **Goal:** Prove the rendering-performance properties from `requirements.md`
 hold at the component / E2E level — as **structural DOM-bound assertions**,
@@ -228,8 +210,6 @@ component-level **Performance** bullet)
   cohorts) and assert the rendered cohort rows stay **bounded** — newest
   cohort + one collapsed "×N full" chip + oldest — regardless of cohort
   count. Proves constant DOM.
-- `OnboardingView`: take a large number, then assert only the windowed page
-  of rows is in the DOM, not every served creator. Proves windowing.
 - A coarse responsiveness check: a large batch add completes without the
   interaction timing out — kept structural/coarse, with no tight millisecond
   budget (wall-clock timing is flaky in a browser).
@@ -239,18 +219,16 @@ component-level **Performance** bullet)
 
 **Est. size:** ~70 lines E2E.
 
-**Sequencing note:** runs right after the Onboarding view (Phase 8) — once every
-component exists (`CohortList` in Phase 7, `OnboardingView` in Phase 8) — and
-before persistence (Phase 10), since these tests target rendering only and don't
-depend on it.
+**Sequencing note:** runs right after the cohort visualization (Phase 7) — once
+`CohortList` exists — and before persistence (Phase 9), since these tests target
+rendering only and don't depend on it.
 
-**PR:** `Phase 9: component performance tests`
+**PR:** `Phase 8: component performance tests`
 Description covers: why performance is verified at the component/E2E level
 (rendering only manifests in a real browser), why structural DOM-count
-assertions beat flaky wall-clock timing, and the constant-DOM and windowing
-properties asserted.
+assertions beat flaky wall-clock timing, and the constant-DOM property asserted.
 
-## Phase 10 — IndexedDB persistence
+## Phase 9 — IndexedDB persistence
 
 **Goal:** State survives reload. (`requirements.md` → "Persistence")
 
@@ -264,31 +242,31 @@ properties asserted.
 - **Unit tests, same PR:** persistence module against a fake IndexedDB
   (e.g. `fake-indexeddb`): write/read round-trip, hydration validation,
   corrupt/old-schema discard, unavailable-database fallback
-- **E2E:** add and take, reload the page, both views survive; reset clears
-  everything including after a reload
+- **E2E:** add and take, reload the page, the waiting list and cohort view
+  survive; reset clears everything including after a reload
 
 **Est. size:** ~150 lines + ~60 lines unit tests + ~40 lines E2E. If that
-exceeds the soft limit in practice, split: 10a module + unit tests,
-10b hydration/wiring + E2E.
+exceeds the soft limit in practice, split: 9a module + unit tests,
+9b hydration/wiring + E2E.
 
-**PR:** `Phase 10: IndexedDB persistence`
+**PR:** `Phase 9: IndexedDB persistence`
 Description covers: two-store layout vs snapshot (O(1) takes), transaction
 scope per action, schemaVersion policy, failure handling, why taken
-records are kept (onboarding history).
+records are kept (take is O(1) and never touches records).
 
-## Phase 11 — WCAG 2.2 accessibility pass
+## Phase 10 — WCAG 2.2 accessibility pass
 
 **Goal:** Bring the whole app to **WCAG 2.2 Level AA** and prove it.
 (`requirements.md` → "Accessibility")
 
 **Scope:**
-- Audit every view and control with **axe-core** (`cypress-axe`): the Waiting
-  and Onboarding views, all forms, and the cohort/onboarding lists; fix all
-  serious / critical violations.
+- Audit every view and control with **axe-core** (`cypress-axe`): the
+  waiting-list view, all forms, and the cohort list; fix all serious / critical
+  violations.
 - Concrete fixes across the existing components:
   - programmatic labels on every input; errors in a `role="alert"` live region
-  - visible focus styles and a logical, keyboard-operable focus order; the
-    view tabs operable by keyboard, with focus never obscured (SC 2.4.11)
+  - visible focus styles and a logical, keyboard-operable focus order, with
+    focus never obscured (SC 2.4.11)
   - interactive targets ≥ 24×24 CSS px (SC 2.5.8)
   - text-not-colour for the "next to be served" cohort; AA contrast throughout
     (SC 1.4.3, 1.4.11)
@@ -300,17 +278,17 @@ records are kept (onboarding history).
 **Est. size:** ~60 lines of a11y fixes across components + ~40 lines E2E (plus
 the `cypress-axe` dev dependency).
 
-**Sequencing note:** runs after the UI and persistence phases (6–10), so the
+**Sequencing note:** runs after the UI and persistence phases (6–9), so the
 whole app — every view and control, including persistence's loading/fallback
 states — is in place to audit, and before the README so the writeup can state
 WCAG 2.2 AA conformance.
 
-**PR:** `Phase 11: WCAG 2.2 accessibility pass`
+**PR:** `Phase 10: WCAG 2.2 accessibility pass`
 Description covers: the `cypress-axe` setup, the conformance target (2.2 AA), the
 specific success criteria addressed (including the 2.2 additions 2.5.8 Target
 Size and 2.4.11 Focus Not Obscured), and the new accessibility checks in the gate.
 
-## Phase 12 — Consolidate unit tests to the core module
+## Phase 11 — Consolidate unit tests to the core module
 
 **Goal:** Make `src/lib/waitingList.test.ts` the single home for unit tests —
 remove the thin-wrapper suites and lean on the type system plus the Cypress E2E
@@ -322,7 +300,7 @@ gate for everything else. A one-time cleanup, requested after the original plan.
 - Keep `src/lib/waitingList.test.ts` — the exhaustive core + derivations
   suite — unchanged. No production code changes.
 - This is a **one-time** removal of the two suites that exist today, **not** a
-  blanket ban: the Phase 10 persistence module still ships its own unit tests
+  blanket ban: the Phase 9 persistence module still ships its own unit tests
   (real IndexedDB I/O — corrupt / old-schema discard and the in-memory
   fallback — which requirements.md calls for and E2E can't cover cleanly).
 - **Why it's safe:** the reducer is a thin scalar wrapper over the core, and
@@ -338,18 +316,18 @@ gate for everything else. A one-time cleanup, requested after the original plan.
 
 **Est. size:** ~95 lines removed across two files; 0 added.
 
-**Sequencing note:** the last test change before the README (Phase 13), so the
+**Sequencing note:** the last test change before the README (Phase 12), so the
 writeup documents the final, consolidated suite. It only deletes test files, so
 it has no code dependencies and can run any time after Phase 6.
 
-**PR:** `Phase 12: consolidate unit tests to the core module`
+**PR:** `Phase 11: consolidate unit tests to the core module`
 Description covers: which suites were removed and why each is redundant
 (reducer = thin wrapper proven via E2E; validation = component / E2E concern per
-requirements.md), the one-time scope (Phase 10 persistence tests retained), the
+requirements.md), the one-time scope (Phase 9 persistence tests retained), the
 parser-edge trade-off, and confirmation that `bun run test` and the Cypress gate
 stay green.
 
-## Phase 13 — README and writeup
+## Phase 12 — README and writeup
 
 **Goal:** Submission-ready documentation. The final phase — runs after every
 other phase so the writeup documents the finished app.
@@ -366,7 +344,7 @@ other phase so the writeup documents the finished app.
 
 **Est. size:** ~120 lines of prose.
 
-**PR:** `Phase 13: README and writeup`
+**PR:** `Phase 12: README and writeup`
 Description covers: summary of the writeup contents and a final checklist
 against the take-home's grading criteria.
 
