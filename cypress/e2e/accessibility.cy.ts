@@ -1,4 +1,4 @@
-// Phase 10 — WCAG 2.2 AA checks. axe-core (cypress-axe) covers the
+// WCAG 2.2 AA checks. axe-core (cypress-axe) covers the
 // machine-checkable criteria (contrast, names, roles, landmarks); checkA11y is
 // configured to fail on axe violations at ANY impact level across the app's
 // states (empty, with creators + an expanded cohort, the windowed/paginated
