@@ -263,8 +263,8 @@ records are kept (take is O(1) and never touches records).
 
 **Scope:**
 - Audit every view and control with **axe-core** (`cypress-axe`): the
-  waiting-list view, all forms, and the cohort list; fix all serious / critical
-  violations.
+  waiting-list view, all forms, and the cohort list; fix all axe violations (the
+  gate fails on any impact level).
 - Concrete fixes across the existing components:
   - programmatic labels on every input; errors in a `role="alert"` live region
   - visible focus styles and a logical, keyboard-operable focus order, with
@@ -275,7 +275,8 @@ records are kept (take is O(1) and never touches records).
   - `role="status"` / `aria-live` announcements for total and take updates
     (SC 4.1.3)
 - **E2E:** add `cypress-axe` checks (`cy.injectAxe` / `cy.checkA11y`) on the
-  main views, asserting no serious/critical violations; runs in the same CI gate.
+  main views, asserting no axe violations at any impact level; runs in the same
+  CI gate.
 
 **Est. size:** ~60 lines of a11y fixes across components + ~40 lines E2E (plus
 the `cypress-axe` dev dependency).

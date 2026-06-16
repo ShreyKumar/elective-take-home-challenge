@@ -12,6 +12,12 @@ export function Summary({ total, cohortCount }: SummaryProps) {
   return (
     <section
       aria-label="Summary"
+      // Announce total/cohort changes after add and take to assistive tech
+      // without moving focus (WCAG 2.2 AA — SC 4.1.3 Status Messages).
+      // aria-atomic re-reads the whole region so the labels travel with the
+      // numbers ("Total waiting 3 Cohorts 1"), not a bare changed digit.
+      aria-live="polite"
+      aria-atomic="true"
       className="flex gap-8 rounded border border-gray-200 bg-gray-50 px-4 py-3"
     >
       <div>

@@ -143,7 +143,7 @@ function ExpandedCohort({
     >
       {creators.map((creator) => (
         <li key={creator.seq} data-cy="cohort-creator" className="text-sm text-gray-700">
-          <span className="font-mono text-xs text-gray-400">#{creator.seq}</span> {creator.name} —{' '}
+          <span className="font-mono text-xs text-gray-600">#{creator.seq}</span> {creator.name} —{' '}
           {creator.area}
         </li>
       ))}
