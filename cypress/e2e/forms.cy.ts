@@ -21,13 +21,7 @@ describe('waiting-list forms', () => {
     cy.get('[data-cy=take-btn]').should('be.disabled')
   })
 
-  it('adds a single creator and updates the summary', () => {
-    addCreator('Ada', 'Design')
-    cy.get('[data-cy=total]').should('have.text', '1')
-    cy.get('[data-cy=cohort-count]').should('have.text', '1')
-  })
-
-  it('adds multiple creators sequentially', () => {
+  it('adds creators and updates the summary (total + cohort count)', () => {
     addCreator('Ada', 'Design')
     addCreator('Grace', 'Development')
     addCreator('Linus', 'Writing')
