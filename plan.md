@@ -183,8 +183,8 @@ direct one-step take, new E2E coverage.
 CohortList)
 
 **Scope:**
-- `CohortList`: newest cohort, collapsed "10 ×N full" middle chip, oldest
-  cohort marked "next to be served", newest-left ordering
+- `CohortList`: cohorts as rows, newest-left / oldest-right, the oldest marked
+  "next to be served" (constant-DOM windowing lands in Phase 8)
 - `CohortRow`: count + fill state, expandable to list creators (seq-range
   read), keyed by cohort number
 - **E2E:** the spec's full example flow through the UI (add 3 → add 13 →
@@ -194,39 +194,41 @@ CohortList)
 **Est. size:** ~120 lines + ~50 lines E2E.
 
 **PR:** `Phase 7: cohort visualization`
-Description covers: why the middle collapses to one chip (constant DOM),
-key stability, how expansion reads the ledger, spec flow now asserted
-end to end.
+Description covers: newest-left ordering, key stability, how expansion reads the
+ledger, and the spec flow now asserted end to end.
 
-## Phase 8 — Component performance tests
+## Phase 8 — Cohort-list windowing + performance tests
 
-**Goal:** Prove the rendering-performance properties from `requirements.md`
-hold at the component / E2E level — as **structural DOM-bound assertions**,
-not wall-clock timing. (`requirements.md` → "Core Module & Unit Tests",
-component-level **Performance** bullet)
+**Goal:** Make `CohortList` render in **constant DOM** and prove it at the
+component / E2E level — as **structural DOM-bound assertions**, not wall-clock
+timing. (`requirements.md` → "Components" → CohortList, "Core Module & Unit
+Tests" → **Performance** bullet)
 
 **Scope:**
-- `CohortList`: load a large list (e.g. add 100k creators across many
-  cohorts) and assert the rendered cohort rows stay **bounded** — newest
-  cohort + one collapsed "×N full" chip + oldest — regardless of cohort
-  count. Proves constant DOM.
-- A coarse responsiveness check: a large batch add completes without the
-  interaction timing out — kept structural/coarse, with no tight millisecond
-  budget (wall-clock timing is flaky in a browser).
+- **`CohortList` windowing (code):** render cohorts as rows but **windowed** —
+  at most a page (`PAGE_SIZE`) of rows in the DOM at once, with Prev/Next paging
+  and a "cohorts X–Y of Z" label — so the DOM stays bounded for any cohort
+  count. (The earlier collapsed "×N full" chip was removed; windowing replaces
+  it as the constant-DOM mechanism.)
+- **E2E:** add more cohorts than fit in one page (capacity 1 makes each creator
+  its own cohort) and assert the rendered cohort rows stay capped at the page
+  size regardless of cohort count; paging moves the window and stays bounded;
+  a take reflows the window and the bound still holds.
 - These extend the **Cypress** E2E suite from Phase 4 and run in the same CI
   gate. No timing assertions land in the unit suite — the core's O(1)/O(m)
-  costs are guaranteed by construction, not measured.
+  costs are guaranteed by construction, not measured; this proves the
+  *rendering* bound, which only manifests in a real browser.
 
-**Est. size:** ~70 lines E2E.
+**Est. size:** ~40 lines windowing code + ~40 lines E2E.
 
-**Sequencing note:** runs right after the cohort visualization (Phase 7) — once
-`CohortList` exists — and before persistence (Phase 9), since these tests target
-rendering only and don't depend on it.
+**Sequencing note:** runs right after the cohort visualization (Phase 7) — it
+extends `CohortList` — and before persistence (Phase 9), since it targets
+rendering only and doesn't depend on it.
 
-**PR:** `Phase 8: component performance tests`
-Description covers: why performance is verified at the component/E2E level
-(rendering only manifests in a real browser), why structural DOM-count
-assertions beat flaky wall-clock timing, and the constant-DOM property asserted.
+**PR:** `Phase 8: cohort-list windowing + performance tests`
+Description covers: why the cohort list is windowed (constant DOM for any cohort
+count), why performance is verified at the component/E2E level with structural
+DOM-count assertions rather than flaky wall-clock timing, and the bound asserted.
 
 ## Phase 9 — IndexedDB persistence
 

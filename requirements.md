@@ -165,7 +165,7 @@ history; `head` is simply the boundary between served and waiting.
 | Take n | **O(1)** | move `head` |
 | Total | **O(1)** | `next − head` |
 | Add m | O(m) | must read m inputs — can't do better |
-| Render | **O(1)** | middle cohorts are all full, shown as one "×N full" chip |
+| Render | **O(1)** | the cohort list is windowed — a bounded page of rows regardless of cohort count |
 
 The **area** field is typed as a union of the 5 options (not `string`), so
 an invalid area can't compile.
@@ -220,9 +220,10 @@ proven at the component level rather than in the module:
   counts) live with the components and the E2E suite, not the module.
 - **Performance** — the core operations are O(1)/O(m) by construction, so the
   thing actually worth proving is that the *components* stay responsive with
-  large inputs: a large cohort list renders in constant DOM (the collapsed
-  "×N full" middle) and a big batch add doesn't block the UI. These performance
-  checks run at the React-component / E2E level, never against the core module.
+  large inputs: a list with many cohorts renders in constant DOM because the
+  cohort list is windowed to a bounded page of rows, and the app stays
+  responsive as the list grows. These performance checks run at the
+  React-component / E2E level, never against the core module.
 
 The cohort/ledger edge-case behavior is still proven in the module tests,
 once, not re-proven through the UI.
@@ -276,9 +277,10 @@ this size.
 - **TakeForm** — number input + take button; disabled when the list is
   empty. Takes up to N oldest creators directly (no confirmation step).
 - **Summary** — total waiting and cohort count
-- **CohortList** — shows the newest cohort, one collapsed "10 ×N full" chip
-  for the middle, and the oldest cohort (marked "next to be served"). A
-  cohort can be expanded to list its creators.
+- **CohortList** — shows the cohorts as rows (newest left, oldest right; the
+  oldest is marked "next to be served"). The list is **windowed** — at most a
+  page of rows is in the DOM, with Prev/Next paging — so it stays constant-DOM
+  for any number of cohorts. A cohort can be expanded to list its creators.
 
 React keys come from seq / cohort numbers (stable forever), never array
 indexes.
