@@ -350,7 +350,7 @@ empty.
 
 - `take(n)` returns the taken creators (via seq range), not just a count
 - Taking more than available is a success, not an error
-- Taking is a single-step action — no confirmation modal
+- Taking is a single-step action
 - Invalid form input is rejected (not silently clamped)
 - Input validation lives only in the React components; the core module trusts
   its inputs and carries no defensive guards
