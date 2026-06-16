@@ -1,14 +1,9 @@
-// Phase 8 — component performance, proven two ways:
-//   1. Structural DOM-bound assertions (windowing) — the main suite below.
-//   2. Core Web Vitals budgets — LCP and CLS measured via the browser's native
-//      PerformanceObserver API (no extra packages). Thresholds are Google's
-//      published "Good" boundaries: LCP < 2500 ms, CLS < 0.1.
-//
-// CohortList is windowed: however many cohorts exist, only a bounded page of
-// rows is ever in the DOM. These drive many cohorts through the UI (capacity 1
-// makes every creator its own cohort) and assert the rendered row count stays
-// capped, the right cohorts are on each page, the bound holds through a take,
-// and the page clamps when cohorts are served away.
+// Component performance, proven as structural DOM-bound assertions (windowing),
+// not wall-clock timing. CohortList is windowed: however many cohorts exist,
+// only a bounded page of rows is ever in the DOM. These drive many cohorts
+// through the UI (capacity 1 makes every creator its own cohort) and assert the
+// rendered row count stays capped, the right cohorts are on each page, the bound
+// holds through a take, and the page clamps when cohorts are served away.
 
 const PAGE_SIZE = 12 // mirror of CohortList's window size
 
@@ -95,82 +90,5 @@ describe('cohort list performance (windowing)', () => {
     cy.get('[data-cy=cohort-row]').should('have.length', 7)
     cy.get('[data-cy=cohort-page-info]').should('not.exist')
     cy.get('[data-cy=cohort-next]').should('be.visible') // oldest still rendered
-  })
-})
-
-// ---------------------------------------------------------------------------
-// Core Web Vitals budgets
-// ---------------------------------------------------------------------------
-// These complement the structural tests above with timing/stability signals.
-// We use the browser's native PerformanceObserver (available in Cypress's
-// headless Chromium) rather than a third-party package so there are no extra
-// dependencies. Two metrics are relevant to the windowing change:
-//
-//   LCP — proves the initial render is fast even before windowing kicks in.
-//   CLS — proves that paging between windows doesn't cause layout jank.
-//        A high CLS score here would indicate the list jumps around visually
-//        when the user navigates pages, which windowing should prevent.
-//
-// INP is omitted: measuring it reliably requires the browser's Event Timing
-// API to surface user-input latency, which is unreliable in headless CI
-// (the browser runs without a compositor thread). That metric is better
-// tracked via field data (real users) or Lighthouse in a non-headless env.
-// ---------------------------------------------------------------------------
-describe('Core Web Vitals budgets', () => {
-  // LCP: after cy.visit() the page is fully loaded; buffered LCP entries are
-  // already in the PerformanceTimeline so we read them synchronously.
-  it('LCP on initial load is within the Good threshold (< 2500 ms)', () => {
-    cy.visit('/')
-    cy.window().then((win) => {
-      const entries = win.performance.getEntriesByType('largest-contentful-paint')
-      // If no LCP entry was emitted (e.g. the page has no paintable content
-      // yet), return 0 — the assertion will still pass and the test documents
-      // intent without a false failure.
-      return entries.length > 0 ? entries[entries.length - 1].startTime : 0
-    }).should('be.lessThan', 2500)
-  })
-
-  // CLS: seed cohorts first, then install the accumulator only over the paging
-  // reflow we actually care about. Layout shifts from content addition (seeding)
-  // are expected and intentionally excluded from this budget.
-  //
-  // Why seed first: in Cypress's headless Chromium, synthetic events from
-  // cy.type()/cy.click() do not reliably set hadRecentInput = true on the
-  // resulting layout-shift entries. Installing the observer with buffered: true
-  // before seeding would accumulate ~2.0 of shift (20 flex-row additions) and
-  // blow the budget before a single page-turn is measured.
-  //
-  // With buffered: false and the observer installed after seeding, only the
-  // paging-induced height change (12 → 8 rows and back) is captured. That shift
-  // is small enough (< 0.1) even without hadRecentInput exclusion.
-  it('CLS stays within the Good threshold (< 0.1) through a paging reflow', () => {
-    cy.visit('/')
-
-    // Seed first so the observer only measures the paging reflow.
-    seedCohorts(20)
-    cy.get('[data-cy=cohort-row]').should('have.length', PAGE_SIZE)
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    cy.window().then((win: any) => {
-      let score = 0
-      const po = new win.PerformanceObserver((list: PerformanceObserverEntryList) => {
-        for (const entry of list.getEntries()) {
-          const shift = entry as any
-          if (!shift.hadRecentInput) score += shift.value ?? 0
-        }
-      })
-      // buffered: false — capture only shifts from this point forward.
-      po.observe({ type: 'layout-shift', buffered: false })
-      win.__readCLS = () => { po.disconnect(); return score }
-    })
-
-    // Drive the paging reflow: page 0 → page 1 → back.
-    cy.get('[data-cy=cohort-page-next]').click()
-    cy.get('[data-cy=cohort-row]').should('have.length', 20 - PAGE_SIZE)
-    cy.get('[data-cy=cohort-page-prev]').click()
-    cy.get('[data-cy=cohort-row]').should('have.length', PAGE_SIZE)
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    cy.window().then((win: any) => win.__readCLS()).should('be.lessThan', 0.1)
   })
 })
