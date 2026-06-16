@@ -293,19 +293,22 @@ Size and 2.4.11 Focus Not Obscured), and the new accessibility checks in the gat
 
 ## Phase 11 — Consolidate unit tests to the core module
 
-**Goal:** Make `src/lib/waitingList.test.ts` the single home for unit tests —
-remove the thin-wrapper suites and lean on the type system plus the Cypress E2E
-gate for everything else. A one-time cleanup, requested after the original plan.
+**Goal:** Make `src/lib/waitingList.test.ts` the home for the core / derivation
+unit tests — remove the thin-wrapper suites (reducer + validation) and lean on
+the type system plus the Cypress E2E gate for those. The persistence and hook
+suites, which test real I/O and async logic, stay. A one-time cleanup, requested
+after the original plan.
 
 **Scope:**
 - Delete `src/state/waitingListReducer.test.ts` (Phase 5) and
   `src/components/validation.test.ts` (Phase 6).
 - Keep `src/lib/waitingList.test.ts` — the exhaustive core + derivations
   suite — unchanged. No production code changes.
-- This is a **one-time** removal of the two suites that exist today, **not** a
-  blanket ban: the Phase 9 persistence module still ships its own unit tests
-  (real IndexedDB I/O — corrupt / old-schema discard and the in-memory
-  fallback — which requirements.md calls for and E2E can't cover cleanly).
+- This is a **one-time** removal of the two thin-wrapper suites, **not** a
+  blanket ban: the Phase 9 persistence module (`waitingListDB.test.ts`) and the
+  `useWaitingList` hook (`useWaitingList.test.ts`) keep their unit tests — real
+  IndexedDB I/O (corrupt / old-schema discard, in-memory fallback) and the async
+  hydrate / StrictMode / sparse-ledger branches that E2E can't cover cleanly.
 - **Why it's safe:** the reducer is a thin scalar wrapper over the core, and
   requirements.md already designates input-validation rejection as a
   component / E2E concern, not a module one. The reducer's reset/add/take wiring
