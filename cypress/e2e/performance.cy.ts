@@ -130,12 +130,25 @@ describe('Core Web Vitals budgets', () => {
     }).should('be.lessThan', 2500)
   })
 
-  // CLS: install the accumulator *before* any DOM mutations so every
-  // layout-shift entry is captured. Shifts caused by an explicit user click
-  // (hadRecentInput === true) are excluded per the spec — the paging clicks
-  // themselves don't inflate the score, only unexpected/autonomous shifts do.
+  // CLS: seed cohorts first, then install the accumulator only over the paging
+  // reflow we actually care about. Layout shifts from content addition (seeding)
+  // are expected and intentionally excluded from this budget.
+  //
+  // Why seed first: in Cypress's headless Chromium, synthetic events from
+  // cy.type()/cy.click() do not reliably set hadRecentInput = true on the
+  // resulting layout-shift entries. Installing the observer with buffered: true
+  // before seeding would accumulate ~2.0 of shift (20 flex-row additions) and
+  // blow the budget before a single page-turn is measured.
+  //
+  // With buffered: false and the observer installed after seeding, only the
+  // paging-induced height change (12 → 8 rows and back) is captured. That shift
+  // is small enough (< 0.1) even without hadRecentInput exclusion.
   it('CLS stays within the Good threshold (< 0.1) through a paging reflow', () => {
     cy.visit('/')
+
+    // Seed first so the observer only measures the paging reflow.
+    seedCohorts(20)
+    cy.get('[data-cy=cohort-row]').should('have.length', PAGE_SIZE)
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     cy.window().then((win: any) => {
@@ -146,13 +159,12 @@ describe('Core Web Vitals budgets', () => {
           if (!shift.hadRecentInput) score += shift.value ?? 0
         }
       })
-      po.observe({ type: 'layout-shift', buffered: true })
-      // Expose a reader so a later cy.window() call can collect and stop.
+      // buffered: false — capture only shifts from this point forward.
+      po.observe({ type: 'layout-shift', buffered: false })
       win.__readCLS = () => { po.disconnect(); return score }
     })
 
-    // Drive a paging reflow: seed 20 cohorts → page 0 → page 1 → back.
-    seedCohorts(20)
+    // Drive the paging reflow: page 0 → page 1 → back.
     cy.get('[data-cy=cohort-page-next]').click()
     cy.get('[data-cy=cohort-row]').should('have.length', 20 - PAGE_SIZE)
     cy.get('[data-cy=cohort-page-prev]').click()

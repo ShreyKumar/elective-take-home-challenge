@@ -7,7 +7,7 @@
 // reports and reads the ledger by seq range to list a cohort's creators when
 // it's expanded.
 
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import {
   cohortCount,
   cohortRange,
@@ -32,6 +32,11 @@ const panelId = (cohort: number) => `cohort-${cohort}-creators`
 export function CohortList({ counters, ledger }: CohortListProps) {
   const [expanded, setExpanded] = useState<number | null>(null)
   const [page, setPage] = useState(0)
+  // Stable identity across all renders — safe to pass to React.memo'd CohortRow.
+  const toggle = useCallback(
+    (cohort: number) => setExpanded((curr) => (curr === cohort ? null : cohort)),
+    [],
+  )
   const newest = newestCohort(counters)
   const oldest = oldestCohort(counters)
 
@@ -64,9 +69,6 @@ export function CohortList({ counters, ledger }: CohortListProps) {
   const openCohort = expanded !== null && windowCohorts.includes(expanded) ? expanded : null
   if (expanded !== null && openCohort === null) setExpanded(null)
 
-  const toggle = (cohort: number) =>
-    setExpanded((curr) => (curr === cohort ? null : cohort))
-
   return (
     <section aria-label="Cohorts" data-cy="cohort-list" className="space-y-3">
       {/* newest on the left, oldest on the right */}
@@ -79,7 +81,7 @@ export function CohortList({ counters, ledger }: CohortListProps) {
             nextToServe={cohort === oldest}
             expanded={openCohort === cohort}
             panelId={panelId(cohort)}
-            onToggle={() => toggle(cohort)}
+            onToggle={toggle}
           />
         ))}
       </div>
