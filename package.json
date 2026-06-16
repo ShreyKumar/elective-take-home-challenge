@@ -13,15 +13,20 @@
     "cypress:open": "cypress open"
   },
   "dependencies": {
+    "idb": "^8.0.3",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.16",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/react": "^16.3.2",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
     "@vitejs/plugin-react": "^5.1.0",
     "cypress": "^15.17.0",
+    "fake-indexeddb": "^6.2.5",
+    "happy-dom": "^20.10.4",
     "tailwindcss": "^4.1.16",
     "typescript": "~5.9.3",
     "vite": "^7.2.4",

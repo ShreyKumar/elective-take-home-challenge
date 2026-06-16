@@ -15,6 +15,7 @@ export type Action =
   | { type: 'reset'; capacity: number }
   | { type: 'add'; count: number }
   | { type: 'take'; count: number }
+  | { type: 'hydrate'; counters: Counters }
 
 export function initWaitingList(capacity: number = DEFAULT_CAPACITY): WaitingListState {
   return { counters: create(capacity) }
@@ -40,5 +41,10 @@ export function waitingListReducer(
       const { counters } = take(state.counters, action.count)
       return { counters }
     }
+
+    case 'hydrate':
+      // Replace state wholesale from the counters loaded out of IndexedDB on
+      // startup; the ledger buffer is rebuilt alongside (see useWaitingList).
+      return { counters: action.counters }
   }
 }
