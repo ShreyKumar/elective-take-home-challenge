@@ -53,7 +53,7 @@ export function CohortRow({
           next to be served
         </span>
       )}
-      <span className="text-[10px] uppercase tracking-wide text-gray-400">
+      <span className="text-[10px] uppercase tracking-wide text-gray-600">
         {expanded ? 'hide' : 'show'} creators
       </span>
     </button>
